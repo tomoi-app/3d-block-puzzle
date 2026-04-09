@@ -10,6 +10,12 @@ body { overflow: hidden; font-family: sans-serif; }
 
 #ui-layer {
     position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 10;
+    pointer-events: none; /* UIの透明な部分はタッチを奥に貫通させる */
+}
+
+/* UIレイヤーの中にある「実際に操作する部品」だけはタッチを有効に戻す */
+.control-pad, #joystick-base, .rot-btn {
+    pointer-events: auto;
 }
 
 /* ワンフィンガーUI */

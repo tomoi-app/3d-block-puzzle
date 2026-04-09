@@ -1,21 +1,22 @@
+// js/main.js
 const GRID_SIZE = 12;
 
-let scene, camera, renderer;
+let scene, camera, renderer, controls;
 let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
-let characterGroup, characterArm;
+let characterGroup;
 let lastTime = 0, dropTimer = 0;
-const dropInterval = 800; 
+const dropInterval = 800;
 
 // ゲーム状態
 let isGameOver = false;
-let currentScore = 0;
+let charGridPos = { x: 5, z: 5 }; // キャラクターの現在位置
+let charHeight = 0;
 
-// ジョイスティック（連続移動）用
+// ジョイスティック用
 let activeDir = null;
 let moveTimer = 0;
-const moveInterval = 150; // 連続移動のスピード
+const moveInterval = 150;
 
-// テトリミノ定義
 const SHAPES = [
     [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:-1,y:0,z:0}, {x:-1,y:1,z:0}], // L
     [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:-1,y:0,z:0}, {x:2,y:0,z:0}],  // I
@@ -30,21 +31,29 @@ function init() {
     scene.fog = new THREE.Fog(0x87CEEB, 20, 60);
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // カメラの初期位置を少し遠ざける（引き絵）
+    camera.position.set(GRID_SIZE/2, 25, GRID_SIZE + 15);
+
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.enablePan = false;
+    controls.maxPolarAngle = Math.PI / 2;
+    controls.target.set(GRID_SIZE/2, 0, GRID_SIZE/2);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.7));
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // 土台グリッド
     const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x000000, 0x000000);
     gridHelper.position.set(GRID_SIZE/2 - 0.5, 0, GRID_SIZE/2 - 0.5);
     scene.add(gridHelper);
 
-    // グループ作成
     translationGroup = new THREE.Group();
     rotationGroup = new THREE.Group();
     blockGroup = new THREE.Group();
@@ -55,9 +64,7 @@ function init() {
     scene.add(translationGroup);
     scene.add(landedBlocksGroup);
 
-    // キャラクター（プレースホルダー）の作成
     initCharacter();
-
     setupUI();
     startGame();
 
@@ -72,28 +79,18 @@ function init() {
 
 function initCharacter() {
     characterGroup = new THREE.Group();
-    
-    // 体（白い円柱）
     const bodyGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 16);
     const bodyMat = new THREE.MeshLambertMaterial({color: 0xffffff});
     const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.5; // 足元を基準にするため上にずらす
+    body.position.y = 0.5;
     characterGroup.add(body);
-
-    // 伸びる腕（細い円柱）
-    const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 1, 8);
-    // 腕の起点を端にするためジオメトリをずらす
-    armGeo.translate(0, 0.5, 0); 
-    const armMat = new THREE.MeshLambertMaterial({color: 0xffffff});
-    characterArm = new THREE.Mesh(armGeo, armMat);
-    characterGroup.add(characterArm);
-
     scene.add(characterGroup);
 }
 
 function startGame() {
     isGameOver = false;
-    currentScore = 0;
+    charGridPos = { x: 5, z: 5 };
+    charHeight = 0;
     while(landedBlocksGroup.children.length > 0) landedBlocksGroup.remove(landedBlocksGroup.children[0]);
     document.getElementById('game-over-screen').style.display = 'none';
     spawnBlock();
@@ -114,39 +111,66 @@ function spawnBlock() {
         blockGroup.add(mesh);
     });
 
-    translationGroup.position.set(Math.floor(GRID_SIZE/2), Math.max(15, currentScore + 10), Math.floor(GRID_SIZE/2));
+    // カメラの高さより少し上に出現
+    const spawnY = Math.max(15, controls.target.y + 15);
+    translationGroup.position.set(Math.floor(GRID_SIZE/2), spawnY, Math.floor(GRID_SIZE/2));
 }
 
-function moveBlock(dx, dy, dz) {
-    if (isGameOver) return;
+// 厳密な当たり判定
+function checkCollision(targetX, targetY, targetZ) {
+    let hasCollision = false;
+    const cubes = blockGroup.children;
     
-    translationGroup.position.x += dx;
-    translationGroup.position.y += dy;
-    translationGroup.position.z += dz;
+    // 仮のクォータニオンを計算して子要素の世界座標を予測
+    const tempGroup = new THREE.Group();
+    tempGroup.position.set(targetX, targetY, targetZ);
+    const tempRotGroup = new THREE.Group();
+    tempRotGroup.rotation.copy(rotationGroup.rotation);
+    tempGroup.add(tempRotGroup);
     
-    // 【場外落下判定】XとZが土台(0〜11)から外れたら許可するが、固定時に落ちる
-    let hitFloorOrBlock = false;
+    cubes.forEach(cube => {
+        const tempCube = cube.clone();
+        tempRotGroup.add(tempCube);
+        tempGroup.updateMatrixWorld(true);
+        const worldPos = new THREE.Vector3();
+        tempCube.getWorldPosition(worldPos);
+        
+        const px = Math.round(worldPos.x);
+        const py = Math.round(worldPos.y);
+        const pz = Math.round(worldPos.z);
 
-    // 着地判定（Yが0以下、または他のブロックに触れたら）
-    if (translationGroup.position.y < 0.5) hitFloorOrBlock = true;
-    
-    // ※今回は簡易的に、Yだけ戻して着地させる
-    if (hitFloorOrBlock && dy < 0) {
-        translationGroup.position.y -= dy; // 沈み込みを防ぐ
+        // 床・壁の判定（はみ出さないように）
+        if (py < 0 || px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
+            hasCollision = true;
+        }
+
+        // 他の固定ブロックとの重なり判定
+        landedBlocksGroup.children.forEach(landed => {
+            if (Math.round(landed.position.x) === px && 
+                Math.round(landed.position.y) === py && 
+                Math.round(landed.position.z) === pz) {
+                hasCollision = true;
+            }
+        });
+    });
+    return hasCollision;
+}
+
+function tryMoveBlock(dx, dy, dz) {
+    if (isGameOver) return;
+    const tx = translationGroup.position.x + dx;
+    const ty = translationGroup.position.y + dy;
+    const tz = translationGroup.position.z + dz;
+
+    if (!checkCollision(tx, ty, tz)) {
+        translationGroup.position.set(tx, ty, tz);
+    } else if (dy < 0) {
+        // 下に移動しようとしてぶつかった場合は固定
         lockBlock();
     }
 }
 
 function lockBlock() {
-    const px = Math.round(translationGroup.position.x);
-    const pz = Math.round(translationGroup.position.z);
-
-    // 【ゲームオーバー判定】土台からはみ出して固定しようとしたら落下！
-    if (px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
-        triggerGameOver();
-        return;
-    }
-
     const cubes = [...blockGroup.children];
     cubes.forEach(cube => {
         const worldPos = new THREE.Vector3();
@@ -159,10 +183,55 @@ function lockBlock() {
     spawnBlock();
 }
 
-function triggerGameOver() {
-    isGameOver = true;
-    document.getElementById('final-score').innerText = `最終高度: ${currentScore}m`;
-    document.getElementById('game-over-screen').style.display = 'flex';
+// 指定したマスの高さを取得する便利関数
+function getHeightAt(x, z) {
+    let max = 0;
+    landedBlocksGroup.children.forEach(b => {
+        if (Math.round(b.position.x) === x && Math.round(b.position.z) === z) {
+            max = Math.max(max, Math.round(b.position.y) + 1);
+        }
+    });
+    return max;
+}
+
+// キャラクターが階段を登るロジック
+function updateCharacter() {
+    // ターゲット（ブロックの真下）のX/Zを取得
+    const targetX = Math.max(0, Math.min(GRID_SIZE - 1, Math.round(translationGroup.position.x)));
+    const targetZ = Math.max(0, Math.min(GRID_SIZE - 1, Math.round(translationGroup.position.z)));
+
+    // キャラクターの現在の高さ
+    charHeight = getHeightAt(charGridPos.x, charGridPos.z);
+    
+    // 目標に向けて1歩ずつ移動を試みる
+    if (charGridPos.x !== targetX) {
+        const nextX = charGridPos.x + Math.sign(targetX - charGridPos.x);
+        const nextHeight = getHeightAt(nextX, charGridPos.z);
+        // 高さの差が1マス以下なら移動可能
+        if (nextHeight - charHeight <= 1) {
+            charGridPos.x = nextX;
+        }
+    }
+    
+    charHeight = getHeightAt(charGridPos.x, charGridPos.z);
+
+    if (charGridPos.z !== targetZ) {
+        const nextZ = charGridPos.z + Math.sign(targetZ - charGridPos.z);
+        const nextHeight = getHeightAt(charGridPos.x, nextZ);
+        if (nextHeight - charHeight <= 1) {
+            charGridPos.z = nextZ;
+        }
+    }
+
+    // 最終的な高さを更新
+    charHeight = getHeightAt(charGridPos.x, charGridPos.z);
+
+    // キャラクターの見た目を滑らかに移動させる
+    characterGroup.position.x += (charGridPos.x - characterGroup.position.x) * 0.2;
+    characterGroup.position.z += (charGridPos.z - characterGroup.position.z) * 0.2;
+    characterGroup.position.y += (charHeight - characterGroup.position.y) * 0.2;
+
+    document.getElementById('score-display').innerText = `到達高度: ${charHeight}m`;
 }
 
 function animate(time) {
@@ -170,16 +239,12 @@ function animate(time) {
     const deltaTime = time - lastTime;
     lastTime = time;
 
-    if (isGameOver) {
-        // 落下アニメーション
-        translationGroup.position.y -= 0.5;
-        characterGroup.position.y -= 0.5;
-    } else {
+    if (!isGameOver) {
         // 重力落下
         dropTimer += deltaTime;
         if (dropTimer > dropInterval) {
             dropTimer = 0;
-            moveBlock(0, -1, 0); 
+            tryMoveBlock(0, -1, 0); 
         }
 
         // スティック連続移動
@@ -187,115 +252,72 @@ function animate(time) {
             moveTimer += deltaTime;
             if (moveTimer > moveInterval) {
                 moveTimer = 0;
-                if (activeDir === 'up') moveBlock(0, 0, -1);
-                if (activeDir === 'down') moveBlock(0, 0, 1);
-                if (activeDir === 'left') moveBlock(-1, 0, 0);
-                if (activeDir === 'right') moveBlock(1, 0, 0);
+                if (activeDir === 'up') tryMoveBlock(0, 0, -1);
+                if (activeDir === 'down') tryMoveBlock(0, 0, 1);
+                if (activeDir === 'left') tryMoveBlock(-1, 0, 0);
+                if (activeDir === 'right') tryMoveBlock(1, 0, 0);
             }
         }
 
-        updateCharacterAndCamera();
+        updateCharacter();
+        
+        // 背景色とカメラ追従（キャラクターの高さに合わせる）
+        const skyColor = new THREE.Color(0x87CEEB);
+        const spaceColor = new THREE.Color(0x000011);
+        const progress = Math.min(charHeight / 50, 1.0);
+        const currentColor = skyColor.clone().lerp(spaceColor, progress);
+        scene.background = currentColor;
+        scene.fog.color = currentColor;
+
+        const targetCamY = Math.max(0, charHeight);
+        const diffY = (targetCamY - controls.target.y) * 0.05;
+        controls.target.y += diffY;
+        camera.position.y += diffY; 
     }
 
+    controls.update();
     renderer.render(scene, camera);
 }
 
-function updateCharacterAndCamera() {
-    // 1. 最高高度の計算とスコア更新
-    let maxY = 0;
-    landedBlocksGroup.children.forEach(c => {
-        if(c.position.y > maxY) maxY = c.position.y;
-    });
-    currentScore = Math.floor(maxY);
-    document.getElementById('score-display').innerText = `高度: ${currentScore}m`;
-
-    // 2. キャラクターの足場を計算
-    const px = Math.round(translationGroup.position.x);
-    const pz = Math.round(translationGroup.position.z);
-    let groundY = 0;
-    landedBlocksGroup.children.forEach(b => {
-        if (Math.round(b.position.x) === px && Math.round(b.position.z) === pz) {
-            groundY = Math.max(groundY, b.position.y + 0.5); 
-        }
-    });
-
-    // キャラの位置を更新
-    characterGroup.position.set(px, groundY, pz);
-
-    // 3. 腕をブロックまで伸ばす
-    // 体のてっぺん(Y+1) から ブロックの下部(translation.y) へ
-    const shoulderPos = new THREE.Vector3(px, groundY + 1.0, pz);
-    const blockPos = translationGroup.position.clone();
-    
-    const distance = shoulderPos.distanceTo(blockPos);
-    characterArm.position.copy(shoulderPos); // 肩を起点にする
-    characterArm.scale.set(1, distance, 1);  // 距離分だけ伸ばす
-    characterArm.lookAt(blockPos);           // ブロックの方向を向く
-    characterArm.rotateX(Math.PI / 2);       // 円柱の向きを補正
-
-    // 4. 背景色とカメラ追従
-    const skyColor = new THREE.Color(0x87CEEB);
-    const spaceColor = new THREE.Color(0x000011);
-    const progress = Math.min(currentScore / 50, 1.0);
-    const currentColor = skyColor.clone().lerp(spaceColor, progress);
-    scene.background = currentColor;
-    scene.fog.color = currentColor;
-
-    const targetCamY = Math.max(15, maxY + 15);
-    camera.position.y += (targetCamY - camera.position.y) * 0.05;
-    camera.lookAt(GRID_SIZE/2, maxY, GRID_SIZE/2);
-}
-
 function setupUI() {
-    // --- ジョイスティックの本格的なドラッグ処理 ---
+    // --- ジョイスティック処理（前回の修正版と同じ）---
     const joystickBase = document.getElementById('joystick-base');
     const joystickKnob = document.getElementById('joystick-knob');
     let isDraggingJoystick = false;
     let joystickCenter = { x: 0, y: 0 };
-    const maxRadius = 35; // ノブが動ける最大距離
+    const maxRadius = 35; 
 
     joystickBase.addEventListener('pointerdown', (e) => {
         isDraggingJoystick = true;
-        joystickKnob.style.transition = 'none'; // ドラッグ中はアニメーションを切る
-        
-        // ジョイスティックの中心座標を取得
+        joystickKnob.style.transition = 'none'; 
         const rect = joystickBase.getBoundingClientRect();
-        joystickCenter = { 
-            x: rect.left + rect.width / 2, 
-            y: rect.top + rect.height / 2 
-        };
+        joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
         handleJoystickMove(e);
     });
 
-    // 画面のどこに指が動いても追従する
     window.addEventListener('pointermove', (e) => {
         if (!isDraggingJoystick) return;
         handleJoystickMove(e);
     });
 
-    // 指を離した時のリセット処理
     window.addEventListener('pointerup', () => {
         if (!isDraggingJoystick) return;
         isDraggingJoystick = false;
         joystickKnob.style.transition = 'transform 0.1s ease-out';
-        joystickKnob.style.transform = `translate(0px, 0px)`; // 中央に戻す
-        activeDir = null; // 移動ストップ
+        joystickKnob.style.transform = `translate(0px, 0px)`;
+        activeDir = null;
     });
 
     function handleJoystickMove(e) {
-        // 中心からの距離と角度を計算
         const dx = e.clientX - joystickCenter.x;
         const dy = e.clientY - joystickCenter.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
-
-        // ノブの見た目を動かす（はみ出さないように制限）
         const visualDist = Math.min(distance, maxRadius);
         const knobX = Math.cos(angle) * visualDist;
         const knobY = Math.sin(angle) * visualDist;
         joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
 
-        // 一定以上倒したら、方向（activeDir）を決定してブロックを動かす
         if (distance > 15) {
             const deg = angle * (180 / Math.PI);
             if (deg > -45 && deg <= 45) activeDir = 'right';
@@ -307,12 +329,17 @@ function setupUI() {
         }
     }
 
-    // --- 回転ボタンの処理 ---
-    document.getElementById('btn-rot-x').addEventListener('pointerdown', () => { if(!isGameOver) rotationGroup.rotation.x += Math.PI/2; });
-    document.getElementById('btn-rot-y').addEventListener('pointerdown', () => { if(!isGameOver) rotationGroup.rotation.y += Math.PI/2; });
-    document.getElementById('btn-rot-z').addEventListener('pointerdown', () => { if(!isGameOver) rotationGroup.rotation.z += Math.PI/2; });
+    // --- 回転ボタン ---
+    document.getElementById('btn-rot-x').addEventListener('pointerdown', () => { 
+        if(!isGameOver) { rotationGroup.rotation.x += Math.PI/2; tryMoveBlock(0,0,0); } 
+    });
+    document.getElementById('btn-rot-y').addEventListener('pointerdown', () => { 
+        if(!isGameOver) { rotationGroup.rotation.y += Math.PI/2; tryMoveBlock(0,0,0); }
+    });
+    document.getElementById('btn-rot-z').addEventListener('pointerdown', () => { 
+        if(!isGameOver) { rotationGroup.rotation.z += Math.PI/2; tryMoveBlock(0,0,0); }
+    });
 
-    // --- リトライボタン ---
     document.getElementById('retry-btn').addEventListener('click', startGame);
 }
 
