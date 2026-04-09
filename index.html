@@ -22,12 +22,23 @@
 
     <div id="ui-layer">
       <div class="control-pad">
-        <div id="joystick-base">
-          <div id="joystick-knob"></div>
+
+        <!-- 十字キー（移動） -->
+        <div id="dpad">
+          <button id="btn-fwd"    class="dpad-btn">▲</button>
+          <button id="btn-turn-l" class="dpad-btn">◄</button>
+          <div class="dpad-center"></div>
+          <button id="btn-turn-r" class="dpad-btn">►</button>
+          <button id="btn-bwd"    class="dpad-btn">▼</button>
         </div>
-        <button id="btn-rot-x" class="rot-btn">X回転</button>
-        <button id="btn-rot-y" class="rot-btn">Y回転</button>
-        <button id="btn-rot-z" class="rot-btn">Z回転</button>
+
+        <!-- 回転ボタン -->
+        <div class="rot-group">
+          <button id="btn-rot-x" class="rot-btn">X回</button>
+          <button id="btn-rot-y" class="rot-btn">Y回</button>
+          <button id="btn-rot-z" class="rot-btn">Z回</button>
+        </div>
+
       </div>
     </div>
 

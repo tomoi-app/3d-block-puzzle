@@ -5,6 +5,7 @@ let scene, camera, renderer, controls;
 let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
 let characterGroup, characterArrow;
 let dropMarkerGroup; // 落下形状マーカーグループ
+let directionArrow; // 向き矢印
 let lastTime = 0, dropTimer = 0;
 const dropInterval = 2000; // 落下速度（遅め）
 
@@ -78,6 +79,14 @@ function init() {
     // 落下形状マーカーグループ（毎フレーム再構築）
     dropMarkerGroup = new THREE.Group();
     scene.add(dropMarkerGroup);
+
+    // 向き矢印（ArrowHelper）
+    directionArrow = new THREE.ArrowHelper(
+        new THREE.Vector3(0, 0, -1),
+        new THREE.Vector3(0, 0.1, 0),
+        1.4, 0x00ff88, 0.5, 0.3
+    );
+    scene.add(directionArrow);
 
     translationGroup = new THREE.Group();
     rotationGroup = new THREE.Group();
@@ -195,22 +204,58 @@ function spawnBlock() {
     });
 
     // キャラの1マス前から落とす
-    const frontX = Math.max(0, Math.min(GRID_SIZE - 1, charGridPos.x + charFacing.x));
-    const frontZ = Math.max(0, Math.min(GRID_SIZE - 1, charGridPos.z + charFacing.z));
+    const front = getDropFront();
     const spawnY = Math.max(charHeight + 8, 12);
-    translationGroup.position.set(frontX, spawnY, frontZ);
+    translationGroup.position.set(front.x, spawnY, front.z);
 }
 
-function moveCharacter(dx, dz) {
+// キャラの1マス前の着地予定地を返す（絶対にキャラ位置と重ならない）
+function getDropFront() {
+    const fx = charGridPos.x + charFacing.x;
+    const fz = charGridPos.z + charFacing.z;
+    const cx = Math.max(0, Math.min(GRID_SIZE - 1, fx));
+    const cz = Math.max(0, Math.min(GRID_SIZE - 1, fz));
+    // クランプ後もキャラと同じなら別の隣接セルを探す
+    if (cx === charGridPos.x && cz === charGridPos.z) {
+        const candidates = [
+            { x: charGridPos.x + 1, z: charGridPos.z },
+            { x: charGridPos.x - 1, z: charGridPos.z },
+            { x: charGridPos.x, z: charGridPos.z + 1 },
+            { x: charGridPos.x, z: charGridPos.z - 1 },
+        ].filter(p => p.x >= 0 && p.x < GRID_SIZE && p.z >= 0 && p.z < GRID_SIZE);
+        return candidates[0] ?? { x: charGridPos.x, z: charGridPos.z };
+    }
+    return { x: cx, z: cz };
+}
+
+function moveForward() {
     if (isGameOver) return;
-    const nx = charGridPos.x + dx;
-    const nz = charGridPos.z + dz;
-    // グリッド内にクランプ
+    const nx = charGridPos.x + charFacing.x;
+    const nz = charGridPos.z + charFacing.z;
     if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
-    // 向きを更新
-    if (dx !== 0 || dz !== 0) charFacing = { x: dx, z: dz };
+}
+
+function moveBackward() {
+    if (isGameOver) return;
+    const nx = charGridPos.x - charFacing.x;
+    const nz = charGridPos.z - charFacing.z;
+    if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
+    charGridPos.x = nx;
+    charGridPos.z = nz;
+}
+
+function turnLeft() {
+    if (isGameOver) return;
+    // (x,z) を CCW に90°回転: (x,z) → (z, -x)
+    charFacing = { x: charFacing.z, z: -charFacing.x };
+}
+
+function turnRight() {
+    if (isGameOver) return;
+    // (x,z) を CW に90°回転: (x,z) → (-z, x)
+    charFacing = { x: -charFacing.z, z: charFacing.x };
 }
 
 function checkCollision(targetX, targetY, targetZ) {
@@ -318,6 +363,17 @@ function triggerGameOver() {
 }
 
 function updateCharacter() {
+    // 向き矢印を更新
+    if (directionArrow) {
+        const dir = new THREE.Vector3(charFacing.x, 0, charFacing.z).normalize();
+        directionArrow.setDirection(dir);
+        directionArrow.position.set(
+            charGridPos.x,
+            charHeight + 0.1,
+            charGridPos.z
+        );
+    }
+
     // キャラクターの向きをモデルに反映
     const angle = Math.atan2(charFacing.x, charFacing.z);
     characterGroup.rotation.y = angle;
@@ -346,23 +402,10 @@ function animate(time) {
             tryMoveBlock(0, -1, 0);
         }
 
-        // ジョイスティック→キャラクターを移動
-        if (activeDir) {
-            moveTimer += deltaTime;
-            if (moveTimer > moveInterval) {
-                moveTimer = 0;
-                if (activeDir === 'up')    moveCharacter(0, -1);
-                if (activeDir === 'down')  moveCharacter(0, 1);
-                if (activeDir === 'left')  moveCharacter(-1, 0);
-                if (activeDir === 'right') moveCharacter(1, 0);
-            }
-        }
-
-        // ブロックのXZはキャラの1マス前に固定
-        const frontX = Math.max(0, Math.min(GRID_SIZE - 1, charGridPos.x + charFacing.x));
-        const frontZ = Math.max(0, Math.min(GRID_SIZE - 1, charGridPos.z + charFacing.z));
-        translationGroup.position.x = frontX;
-        translationGroup.position.z = frontZ;
+        // ブロックのXZはキャラの1マス前に固定（キャラ位置と重ならないことを保証）
+        const front = getDropFront();
+        translationGroup.position.x = front.x;
+        translationGroup.position.z = front.z;
 
         // マーカー：ブロックの形料を地面に投影
         if (dropMarkerGroup) {
@@ -371,7 +414,7 @@ function animate(time) {
 
             // 一時グループで各キューブの世界座標を計算
             const tmpT = new THREE.Group();
-            tmpT.position.set(frontX, translationGroup.position.y, frontZ);
+            tmpT.position.set(front.x, translationGroup.position.y, front.z);
             const tmpR = new THREE.Group();
             tmpR.rotation.copy(rotationGroup.rotation);
             tmpT.add(tmpR);
@@ -431,54 +474,26 @@ function animate(time) {
 }
 
 function setupUI() {
-    const joystickBase = document.getElementById('joystick-base');
-    const joystickKnob = document.getElementById('joystick-knob');
-    let isDraggingJoystick = false;
-    let joystickCenter = { x: 0, y: 0 };
-    const maxRadius = 35;
-
-    joystickBase.addEventListener('pointerdown', (e) => {
-        isDraggingJoystick = true;
-        joystickKnob.style.transition = 'none';
-        const rect = joystickBase.getBoundingClientRect();
-        joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-        handleJoystickMove(e);
-    });
-
-    window.addEventListener('pointermove', (e) => {
-        if (!isDraggingJoystick) return;
-        handleJoystickMove(e);
-    });
-
-    window.addEventListener('pointerup', () => {
-        if (!isDraggingJoystick) return;
-        isDraggingJoystick = false;
-        joystickKnob.style.transition = 'transform 0.1s ease-out';
-        joystickKnob.style.transform = `translate(0px, 0px)`;
-        activeDir = null;
-    });
-
-    function handleJoystickMove(e) {
-        const dx = e.clientX - joystickCenter.x;
-        const dy = e.clientY - joystickCenter.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-        const visualDist = Math.min(distance, maxRadius);
-        const knobX = Math.cos(angle) * visualDist;
-        const knobY = Math.sin(angle) * visualDist;
-        joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
-
-        if (distance > 15) {
-            const deg = angle * (180 / Math.PI);
-            if (deg > -45 && deg <= 45) activeDir = 'right';
-            else if (deg > 45 && deg <= 135) activeDir = 'down';
-            else if (deg > -135 && deg <= -45) activeDir = 'up';
-            else activeDir = 'left';
-        } else {
-            activeDir = null;
-        }
+    // ボタンを2回手に登録するヘルパー：タップで即時実行、長押しで追後繰り返し
+    function addMoveBtn(id, action) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        let holdTimer = null;
+        btn.addEventListener('pointerdown', () => {
+            action(); // たった1回実行
+            holdTimer = setInterval(action, moveInterval); // 長押しは自動繰り返し
+        });
+        btn.addEventListener('pointerup',     () => clearInterval(holdTimer));
+        btn.addEventListener('pointerleave',  () => clearInterval(holdTimer));
+        btn.addEventListener('pointercancel', () => clearInterval(holdTimer));
     }
 
+    addMoveBtn('btn-fwd',    moveForward);
+    addMoveBtn('btn-bwd',    moveBackward);
+    addMoveBtn('btn-turn-l', turnLeft);
+    addMoveBtn('btn-turn-r', turnRight);
+
+    // 回転ボタン
     document.getElementById('btn-rot-x').addEventListener('pointerdown', () => {
         if (!isGameOver) { rotationGroup.rotation.x += Math.PI / 2; tryMoveBlock(0, 0, 0); }
     });

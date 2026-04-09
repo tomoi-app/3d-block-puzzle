@@ -28,34 +28,52 @@ body { overflow: hidden; font-family: sans-serif; }
     pointer-events: none;
 }
 
-.control-pad, #joystick-base, .rot-btn {
+.control-pad, .dpad-btn, .rot-btn {
     pointer-events: auto;
 }
 
-.control-pad { position: relative; width: 220px; height: 220px; }
+/* 十字キーレイアウト */
+.control-pad {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
 
-#joystick-base {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 100px; height: 100px; background: rgba(255,255,255,0.3); border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.5);
+#dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 56px);
+    gap: 4px;
     touch-action: none;
 }
-#joystick-knob {
-    position: absolute; top: 25px; left: 25px; width: 50px; height: 50px;
-    background: rgba(255,255,255,0.8); border-radius: 50%;
-    pointer-events: none;
-    transition: transform 0.1s ease-out;
+
+.dpad-btn {
+    width: 56px; height: 56px; border-radius: 12px;
+    border: none; background: rgba(255,255,255,0.85);
+    font-size: 22px; font-weight: bold; cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center;
+}
+.dpad-btn:active { transform: scale(0.88); background: rgba(255,255,255,0.6); }
+#btn-fwd    { grid-column: 2; grid-row: 1; }
+#btn-turn-l { grid-column: 1; grid-row: 2; }
+.dpad-center { grid-column: 2; grid-row: 2; background: rgba(255,255,255,0.1); border-radius: 50%; }
+#btn-turn-r { grid-column: 3; grid-row: 2; }
+#btn-bwd    { grid-column: 2; grid-row: 3; }
+
+/* 回転ボタングループ */
+.rot-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .rot-btn {
-    position: absolute; width: 60px; height: 60px; border-radius: 50%;
-    border: none; background: rgba(255, 255, 255, 0.9); font-weight: bold;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    width: 60px; height: 60px; border-radius: 50%;
+    border: none; background: rgba(255,255,255,0.9); font-weight: bold; font-size: 13px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer;
 }
 .rot-btn:active { transform: scale(0.9); }
-#btn-rot-x { top: -10px; left: 50%; transform: translateX(-50%); }
-#btn-rot-y { bottom: 10px; left: -10px; }
-#btn-rot-z { bottom: 10px; right: -10px; }
 
 /* ゲームオーバー画面 */
 #game-over-screen {
