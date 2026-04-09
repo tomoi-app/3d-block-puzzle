@@ -4,7 +4,7 @@ const GRID_SIZE = 12;
 let scene, camera, renderer, controls;
 let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
 let characterGroup, characterArrow;
-let dropMarker; // 落下位置マーカー
+let dropMarkerGroup; // 落下形状マーカーグループ
 let lastTime = 0, dropTimer = 0;
 const dropInterval = 2000; // 落下速度（遅め）
 
@@ -75,16 +75,9 @@ function init() {
     gridHelper.position.set(GRID_SIZE/2 - 0.5, 0, GRID_SIZE/2 - 0.5);
     scene.add(gridHelper);
 
-    // 落下位置マーカー（半透明の星形）
-    const markerGeo = new THREE.PlaneGeometry(1.2, 1.2);
-    const markerMat = new THREE.MeshBasicMaterial({
-        color: 0xffff00, transparent: true, opacity: 0.5,
-        depthWrite: false, side: THREE.DoubleSide
-    });
-    dropMarker = new THREE.Mesh(markerGeo, markerMat);
-    dropMarker.rotation.x = -Math.PI / 2; // 水平に寝かせる
-    dropMarker.position.y = 0.01; // 地面からわずかに浮かせてチラつき防止
-    scene.add(dropMarker);
+    // 落下形状マーカーグループ（毎フレーム再構築）
+    dropMarkerGroup = new THREE.Group();
+    scene.add(dropMarkerGroup);
 
     translationGroup = new THREE.Group();
     rotationGroup = new THREE.Group();
@@ -201,9 +194,11 @@ function spawnBlock() {
         blockGroup.add(mesh);
     });
 
-    // キャラの真上から落とす
+    // キャラの1マス前から落とす
+    const frontX = Math.max(0, Math.min(GRID_SIZE - 1, charGridPos.x + charFacing.x));
+    const frontZ = Math.max(0, Math.min(GRID_SIZE - 1, charGridPos.z + charFacing.z));
     const spawnY = Math.max(charHeight + 8, 12);
-    translationGroup.position.set(charGridPos.x, spawnY, charGridPos.z);
+    translationGroup.position.set(frontX, spawnY, frontZ);
 }
 
 function moveCharacter(dx, dz) {
@@ -363,20 +358,57 @@ function animate(time) {
             }
         }
 
-        // ブロックのXZは常にキャラの真上に固定
-        translationGroup.position.x = charGridPos.x;
-        translationGroup.position.z = charGridPos.z;
+        // ブロックのXZはキャラの1マス前に固定
+        const frontX = Math.max(0, Math.min(GRID_SIZE - 1, charGridPos.x + charFacing.x));
+        const frontZ = Math.max(0, Math.min(GRID_SIZE - 1, charGridPos.z + charFacing.z));
+        translationGroup.position.x = frontX;
+        translationGroup.position.z = frontZ;
 
-        // マーカー：キャラの足底（着地予定地）に表示
-        if (dropMarker) {
-            let landY = 1;
-            landedBlocksGroup.children.forEach(b => {
-                if (Math.round(b.position.x) === charGridPos.x &&
-                    Math.round(b.position.z) === charGridPos.z) {
-                    landY = Math.max(landY, b.position.y + 1);
-                }
+        // マーカー：ブロックの形料を地面に投影
+        if (dropMarkerGroup) {
+            // マーカーをリセット
+            while (dropMarkerGroup.children.length > 0) dropMarkerGroup.remove(dropMarkerGroup.children[0]);
+
+            // 一時グループで各キューブの世界座標を計算
+            const tmpT = new THREE.Group();
+            tmpT.position.set(frontX, translationGroup.position.y, frontZ);
+            const tmpR = new THREE.Group();
+            tmpR.rotation.copy(rotationGroup.rotation);
+            tmpT.add(tmpR);
+            blockGroup.children.forEach(cube => {
+                const tmpC = new THREE.Object3D();
+                tmpC.position.copy(cube.position);
+                tmpR.add(tmpC);
             });
-            dropMarker.position.set(charGridPos.x, landY - 0.49, charGridPos.z);
+            tmpT.updateMatrixWorld(true);
+
+            const seen = new Set();
+            const markerMat = new THREE.MeshBasicMaterial({
+                color: 0xffff00, transparent: true, opacity: 0.45,
+                depthWrite: false, side: THREE.DoubleSide
+            });
+            blockGroup.children.forEach((cube, i) => {
+                const wp = new THREE.Vector3();
+                tmpR.children[i].getWorldPosition(wp);
+                const mx = Math.round(wp.x);
+                const mz = Math.round(wp.z);
+                const key = `${mx},${mz}`;
+                if (seen.has(key)) return;
+                seen.add(key);
+
+                // このXZ位置の着地予定Yを計算
+                let landY = 0;
+                landedBlocksGroup.children.forEach(b => {
+                    if (Math.round(b.position.x) === mx && Math.round(b.position.z) === mz) {
+                        landY = Math.max(landY, b.position.y + 1);
+                    }
+                });
+
+                const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), markerMat);
+                plane.rotation.x = -Math.PI / 2;
+                plane.position.set(mx, landY + 0.01, mz);
+                dropMarkerGroup.add(plane);
+            });
         }
 
         updateCharacter();
