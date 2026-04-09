@@ -131,25 +131,53 @@ function resetCamera() {
 function initCharacter() {
     characterGroup = new THREE.Group();
 
-    // 体
-    const bodyGeo = new THREE.CylinderGeometry(0.25, 0.3, 0.9, 10);
-    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.45;
+    const ghostWhite = new THREE.MeshLambertMaterial({ color: 0xf0eeff }); // うっすら青白いゴースト色
+    const eyeBlack  = new THREE.MeshLambertMaterial({ color: 0x111122 }); // 黒目
+
+    // ===== ゴーストのメインボディ =====
+    // 縦長に潰した球でふっくら丸い体
+    const bodyGeo = new THREE.SphereGeometry(0.46, 14, 12);
+    const body = new THREE.Mesh(bodyGeo, ghostWhite);
+    body.scale.set(1.0, 1.35, 0.88);
+    body.position.y = 1.15;
     characterGroup.add(body);
 
-    // 頭
-    const headGeo = new THREE.SphereGeometry(0.25, 10, 10);
-    const headMat = new THREE.MeshLambertMaterial({ color: 0xffe0b0 });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 1.1;
-    characterGroup.add(head);
+    // ===== ゴーストの裾（波型3つ） =====
+    [-0.32, 0, 0.32].forEach(bx => {
+        const bGeo = new THREE.SphereGeometry(0.21, 10, 8);
+        const bump = new THREE.Mesh(bGeo, ghostWhite);
+        bump.scale.set(1, 0.62, 0.88);
+        bump.position.set(bx, 0.28, 0);
+        characterGroup.add(bump);
+    });
 
-    // 向き矢印（三角形）
-    const arrowGeo = new THREE.ConeGeometry(0.2, 0.5, 4);
-    const arrowMat = new THREE.MeshLambertMaterial({ color: 0xff4444 });
+    // ===== 目（楕円形の黒目） =====
+    const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
+    [-0.16, 0.16].forEach(ex => {
+        const eye = new THREE.Mesh(eyeGeo, eyeBlack);
+        eye.scale.set(0.9, 1.4, 0.7); // 縦長の楕円
+        eye.position.set(ex, 1.2, 0.38);
+        characterGroup.add(eye);
+    });
+
+    // ===== 腕（斜め上にケ伸びて、ブロックを頭上で持つイメージ） =====
+    const armMat = ghostWhite;
+    [
+        { x: -0.52, ry:  0.5, rx: -0.3 }, // 左腕：左斜め上
+        { x:  0.52, ry: -0.5, rx: -0.3 }, // 右腕：右斜め上
+    ].forEach(({x, ry, rx}) => {
+        const armGeo = new THREE.CylinderGeometry(0.04, 0.065, 1.1, 6);
+        const arm = new THREE.Mesh(armGeo, armMat);
+        arm.rotation.set(rx, 0, ry);
+        arm.position.set(x, 1.65, -0.08);
+        characterGroup.add(arm);
+    });
+
+    // ===== 向き矢印（足元の小さいコーン） =====
+    const arrowGeo = new THREE.ConeGeometry(0.1, 0.3, 4);
+    const arrowMat = new THREE.MeshLambertMaterial({ color: 0xff5500 });
     characterArrow = new THREE.Mesh(arrowGeo, arrowMat);
-    characterArrow.position.set(0, 0.1, -0.6);
+    characterArrow.position.set(0, 0.06, -0.52);
     characterArrow.rotation.x = Math.PI / 2;
     characterGroup.add(characterArrow);
 
@@ -209,9 +237,9 @@ function spawnBlock() {
         blockGroup.add(mesh);
     });
 
-    // キャラの1マス前から落とす
+    // キャラの1マス前から落とす（0.5オフセットで地面に接地）
     const front = getDropFront();
-    const spawnY = Math.max(charHeight + 8, 12);
+    const spawnY = Math.max(charHeight + 8, 12) + 0.5; // 半ステップオフセット
     translationGroup.position.set(front.x, spawnY, front.z);
 }
 
@@ -286,10 +314,11 @@ function checkCollision(targetX, targetY, targetZ) {
         tempCube.getWorldPosition(worldPos);
 
         const px = Math.round(worldPos.x);
-        const py = Math.round(worldPos.y);
+        const py = Math.round(worldPos.y); // ブロック間充突判定用
         const pz = Math.round(worldPos.z);
 
-        if (py < 1 || px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
+        // 床判定：ブロック中心が 0.5 未満なら押し返す→地面充突
+        if (worldPos.y < 0.5 || px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
             hasCollision = true;
         }
 
@@ -327,7 +356,12 @@ function lockBlock() {
         // キャラの位置には絶対に置かない
         if (wx === charGridPos.x && wz === charGridPos.z) return;
         const newCube = cube.clone();
-        newCube.position.copy(worldPos).round();
+        // Y座標は 0.5単位グリッドに丸める（底面が地面y=0に接地）
+        newCube.position.set(
+            wx,
+            Math.round(worldPos.y * 2) / 2, // 0.5単位に書ける
+            wz
+        );
         landedBlocksGroup.add(newCube);
     });
 
@@ -338,13 +372,15 @@ function lockBlock() {
 }
 
 function getHeightAt(x, z) {
+    // 底面y=0に接地する坐標系：ブロックは y=0.5, 1.5, 2.5...に中心を持つ
+    // getHeightAtは「スタックの上面Y」 = 1, 2, 3... を返す
     let max = 0;
     landedBlocksGroup.children.forEach(b => {
         if (Math.round(b.position.x) === x && Math.round(b.position.z) === z) {
-            max = Math.max(max, Math.round(b.position.y) + 1);
+            max = Math.max(max, b.position.y + 0.5); // top of block
         }
     });
-    return max;
+    return max; // 0=地面, 1=1段, 2=2段...
 }
 
 function checkFallDamage() {
@@ -457,7 +493,7 @@ function animate(time) {
                 let landY = 0;
                 landedBlocksGroup.children.forEach(b => {
                     if (Math.round(b.position.x) === mx && Math.round(b.position.z) === mz) {
-                        landY = Math.max(landY, b.position.y + 1);
+                        landY = Math.max(landY, b.position.y + 0.5); // top of block
                     }
                 });
 
