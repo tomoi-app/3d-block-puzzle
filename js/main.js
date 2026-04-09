@@ -163,10 +163,16 @@ function updateHPDisplay() {
     hpDiv.innerHTML = '';
     for (let i = 0; i < 5; i++) {
         const heart = document.createElement('span');
-        heart.textContent = i < hp ? '♡' : '♡';
-        heart.style.color = i < hp ? '#ff4444' : 'rgba(255,255,255,0.3)';
+        if (i < hp) {
+            heart.textContent = '\u2665'; // 塗りつぶしハート
+            heart.style.color = '#ff2222';
+            heart.style.textShadow = '0 0 8px #ff6666, 0 0 18px #ff0000';
+        } else {
+            heart.textContent = '\u2661'; // 空白ハート
+            heart.style.color = 'rgba(255,255,255,0.3)';
+            heart.style.textShadow = 'none';
+        }
         heart.style.fontSize = '28px';
-        heart.style.textShadow = i < hp ? '0 0 6px #ff0000' : 'none';
         hpDiv.appendChild(heart);
     }
 }
@@ -233,6 +239,8 @@ function moveForward() {
     const nx = charGridPos.x + charFacing.x;
     const nz = charGridPos.z + charFacing.z;
     if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
+    // 1マス以上の段差は登れない
+    if (getHeightAt(nx, nz) - charHeight > 1) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
 }
@@ -242,34 +250,22 @@ function moveBackward() {
     const nx = charGridPos.x - charFacing.x;
     const nz = charGridPos.z - charFacing.z;
     if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
+    // 1マス以上の段差は登れない
+    if (getHeightAt(nx, nz) - charHeight > 1) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
 }
 
-function moveLeft() {
+function turnLeft() {
     if (isGameOver) return;
-    // 左垂直方向（CCW）へ移動し、そちらを向く
-    const lx = charFacing.z;
-    const lz = -charFacing.x;
-    const nx = charGridPos.x + lx;
-    const nz = charGridPos.z + lz;
-    if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
-    charGridPos.x = nx;
-    charGridPos.z = nz;
-    charFacing = { x: lx, z: lz };
+    // その場で左に向きを変える（移動なし）
+    charFacing = { x: charFacing.z, z: -charFacing.x };
 }
 
-function moveRight() {
+function turnRight() {
     if (isGameOver) return;
-    // 右垂直方向（CW）へ移動し、そちらを向く
-    const rx = -charFacing.z;
-    const rz = charFacing.x;
-    const nx = charGridPos.x + rx;
-    const nz = charGridPos.z + rz;
-    if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
-    charGridPos.x = nx;
-    charGridPos.z = nz;
-    charFacing = { x: rx, z: rz };
+    // その場で右に向きを変える（移動なし）
+    charFacing = { x: -charFacing.z, z: charFacing.x };
 }
 
 function checkCollision(targetX, targetY, targetZ) {
@@ -326,6 +322,10 @@ function lockBlock() {
     cubes.forEach(cube => {
         const worldPos = new THREE.Vector3();
         cube.getWorldPosition(worldPos);
+        const wx = Math.round(worldPos.x);
+        const wz = Math.round(worldPos.z);
+        // キャラの位置には絶対に置かない
+        if (wx === charGridPos.x && wz === charGridPos.z) return;
         const newCube = cube.clone();
         newCube.position.copy(worldPos).round();
         landedBlocksGroup.add(newCube);
@@ -504,8 +504,8 @@ function setupUI() {
 
     addMoveBtn('btn-fwd',    moveForward);
     addMoveBtn('btn-bwd',    moveBackward);
-    addMoveBtn('btn-turn-l', moveLeft);
-    addMoveBtn('btn-turn-r', moveRight);
+    addMoveBtn('btn-turn-l', turnLeft);
+    addMoveBtn('btn-turn-r', turnRight);
 
     // 回転ボタン
     document.getElementById('btn-rot-x').addEventListener('pointerdown', () => {
