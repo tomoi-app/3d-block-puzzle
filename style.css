@@ -1,0 +1,65 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  /* スマホでのテキスト選択やハイライトを無効化 */
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+body {
+  overflow: hidden; /* スクロール防止 */
+  background-color: #87ceeb; /* 初期背景：青空 */
+  transition: background-color 2s ease; /* 高度が上がった時の背景変化用 */
+}
+
+#game-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+}
+
+#ui-layer {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* ここにジョイスティックや回転ボタンの具体的な装飾（丸み、ガラス風など）を追加 */
+.control-pad {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.rot-btn {
+  position: absolute;
+  /* あしあとで実装されていたような洗練されたデザインを後ほど適用 */
+  padding: 10px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.8);
+  font-weight: bold;
+}
+/* 各ボタンの配置例（円周上に配置） */
+#btn-rot-x {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+#btn-rot-y {
+  bottom: 20px;
+  left: 0;
+}
+#btn-rot-z {
+  bottom: 20px;
+  right: 0;
+}
