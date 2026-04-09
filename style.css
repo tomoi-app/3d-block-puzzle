@@ -3,38 +3,49 @@ body { overflow: hidden; font-family: sans-serif; }
 
 #game-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
 
+/* ダメージフラッシュ */
+#damage-flash {
+    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(255, 0, 0, 0);
+    pointer-events: none; z-index: 50;
+    transition: opacity 0.3s ease-out;
+}
+
 #score-display {
     position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold;
     color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 10;
 }
 
-#ui-layer {
-    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 10;
-    pointer-events: none; /* UIの透明な部分はタッチを奥に貫通させる */
+/* HP表示（右上） */
+#hp-display {
+    position: absolute; top: 16px; right: 16px;
+    display: flex; gap: 4px; z-index: 10;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
 }
 
-/* UIレイヤーの中にある「実際に操作する部品」だけはタッチを有効に戻す */
+#ui-layer {
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 10;
+    pointer-events: none;
+}
+
 .control-pad, #joystick-base, .rot-btn {
     pointer-events: auto;
 }
 
-/* ワンフィンガーUI */
 .control-pad { position: relative; width: 220px; height: 220px; }
 
 #joystick-base {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: 100px; height: 100px; background: rgba(255,255,255,0.3); border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.5);
-    touch-action: none; /* スマホのスワイプによる画面スクロールを完全に防止 */
+    touch-action: none;
 }
 #joystick-knob {
     position: absolute; top: 25px; left: 25px; width: 50px; height: 50px;
-    background: rgba(255,255,255,0.8); border-radius: 50%; 
-    pointer-events: none; /* タッチイベントは親のbaseに任せる */
-    /* 指を離した時にスッと中央に戻るアニメーション */
-    transition: transform 0.1s ease-out; 
+    background: rgba(255,255,255,0.8); border-radius: 50%;
+    pointer-events: none;
+    transition: transform 0.1s ease-out;
 }
-
 
 .rot-btn {
     position: absolute; width: 60px; height: 60px; border-radius: 50%;
