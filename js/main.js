@@ -186,16 +186,6 @@ function startGame() {
     spawnBlock();
 }
 
-function getBlockSpawnPos() {
-    // キャラの向いている方向の1マス前
-    const frontX = charGridPos.x + charFacing.x;
-    const frontZ = charGridPos.z + charFacing.z;
-    // グリッド内にクランプ
-    const spawnX = Math.max(0, Math.min(GRID_SIZE - 1, frontX));
-    const spawnZ = Math.max(0, Math.min(GRID_SIZE - 1, frontZ));
-    return { x: spawnX, z: spawnZ };
-}
-
 function spawnBlock() {
     while (blockGroup.children.length > 0) blockGroup.remove(blockGroup.children[0]);
     rotationGroup.rotation.set(0, 0, 0);
@@ -211,9 +201,21 @@ function spawnBlock() {
         blockGroup.add(mesh);
     });
 
-    const spawn = getBlockSpawnPos();
-    const spawnY = Math.max(15, charHeight + 15);
-    translationGroup.position.set(spawn.x, spawnY, spawn.z);
+    // キャラの真上から落とす
+    const spawnY = Math.max(charHeight + 8, 12);
+    translationGroup.position.set(charGridPos.x, spawnY, charGridPos.z);
+}
+
+function moveCharacter(dx, dz) {
+    if (isGameOver) return;
+    const nx = charGridPos.x + dx;
+    const nz = charGridPos.z + dz;
+    // グリッド内にクランプ
+    if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
+    charGridPos.x = nx;
+    charGridPos.z = nz;
+    // 向きを更新
+    if (dx !== 0 || dz !== 0) charFacing = { x: dx, z: dz };
 }
 
 function checkCollision(targetX, targetY, targetZ) {
@@ -321,22 +323,14 @@ function triggerGameOver() {
 }
 
 function updateCharacter() {
-    // キャラクターの向きを更新
-    if (activeDir) {
-        if (activeDir === 'up')    charFacing = { x: 0, z: -1 };
-        if (activeDir === 'down')  charFacing = { x: 0, z: 1 };
-        if (activeDir === 'left')  charFacing = { x: -1, z: 0 };
-        if (activeDir === 'right') charFacing = { x: 1, z: 0 };
-    }
-
-    // キャラクターモデルを向きに合わせて回転
+    // キャラクターの向きをモデルに反映
     const angle = Math.atan2(charFacing.x, charFacing.z);
     characterGroup.rotation.y = angle;
 
-    // キャラの高さ（ブロックの上に乗る）
+    // キャラの乗る高さ
     charHeight = getHeightAt(charGridPos.x, charGridPos.z);
 
-    // 見た目を滑らかに
+    // キャラの外観を滑らかに
     characterGroup.position.x += (charGridPos.x - characterGroup.position.x) * 0.2;
     characterGroup.position.z += (charGridPos.z - characterGroup.position.z) * 0.2;
     characterGroup.position.y += (charHeight - characterGroup.position.y) * 0.2;
@@ -350,39 +344,39 @@ function animate(time) {
     lastTime = time;
 
     if (!isGameOver) {
+        // 重力落下（Yのみ）
         dropTimer += deltaTime;
         if (dropTimer > dropInterval) {
             dropTimer = 0;
             tryMoveBlock(0, -1, 0);
         }
 
+        // ジョイスティック→キャラクターを移動
         if (activeDir) {
             moveTimer += deltaTime;
             if (moveTimer > moveInterval) {
                 moveTimer = 0;
-                // ジョイスティックはブロック移動のみ（キャラ移動は別）
-                if (activeDir === 'up')    tryMoveBlock(0, 0, -1);
-                if (activeDir === 'down')  tryMoveBlock(0, 0, 1);
-                if (activeDir === 'left')  tryMoveBlock(-1, 0, 0);
-                if (activeDir === 'right') tryMoveBlock(1, 0, 0);
+                if (activeDir === 'up')    moveCharacter(0, -1);
+                if (activeDir === 'down')  moveCharacter(0, 1);
+                if (activeDir === 'left')  moveCharacter(-1, 0);
+                if (activeDir === 'right') moveCharacter(1, 0);
             }
         }
 
-        // マーカー：ブロックの真下（着地予定地）に表示
+        // ブロックのXZは常にキャラの真上に固定
+        translationGroup.position.x = charGridPos.x;
+        translationGroup.position.z = charGridPos.z;
+
+        // マーカー：キャラの足底（着地予定地）に表示
         if (dropMarker) {
-            const spawn = getBlockSpawnPos();
-            // ブロックのXZ中心をマーカー位置として使用
-            const bx = translationGroup.position.x;
-            const bz = translationGroup.position.z;
-            // 着地Y（マーカーは地面 or 積み上がったブロックの上面）
             let landY = 1;
             landedBlocksGroup.children.forEach(b => {
-                if (Math.round(b.position.x) === Math.round(bx) &&
-                    Math.round(b.position.z) === Math.round(bz)) {
+                if (Math.round(b.position.x) === charGridPos.x &&
+                    Math.round(b.position.z) === charGridPos.z) {
                     landY = Math.max(landY, b.position.y + 1);
                 }
             });
-            dropMarker.position.set(bx, landY + 0.01, bz);
+            dropMarker.position.set(charGridPos.x, landY - 0.49, charGridPos.z);
         }
 
         updateCharacter();
