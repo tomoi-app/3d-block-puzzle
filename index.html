@@ -1,30 +1,34 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3Dブロックパズル(仮)</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
     <div id="game-container"></div>
+
     <div id="score-display">高度: 0m</div>
 
     <div id="ui-layer">
-      <div class="control-pad">
-        <div id="joystick-base">
-          <div id="joystick-knob"></div>
+        <div class="control-pad">
+            <div id="joystick-base">
+                <div id="joystick-knob"></div>
+            </div>
+            <button id="btn-rot-x" class="rot-btn">X回転</button>
+            <button id="btn-rot-y" class="rot-btn">Y回転</button>
+            <button id="btn-rot-z" class="rot-btn">Z回転</button>
         </div>
-        <button id="btn-rot-x" class="rot-btn">X回転</button>
-        <button id="btn-rot-y" class="rot-btn">Y回転</button>
-        <button id="btn-rot-z" class="rot-btn">Z回転</button>
-      </div>
+    </div>
+
+    <div id="game-over-screen" style="display: none;">
+        <h1>GAME OVER</h1>
+        <p id="final-score">落下しました...</p>
+        <button id="retry-btn">リトライ</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script type="module" src="js/main.js"></script>
-  </body>
+</body>
 </html>

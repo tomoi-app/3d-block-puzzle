@@ -1,77 +1,55 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  /* スマホでのテキスト選択やハイライトを無効化 */
-  user-select: none;
-  -webkit-touch-callout: none;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-touch-callout: none; }
+body { overflow: hidden; font-family: sans-serif; }
+
+#game-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
 
 #score-display {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    font-size: 24px;
-    font-weight: bold;
-    color: white;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    z-index: 10;
-    font-family: sans-serif;
-}
-
-body {
-  overflow: hidden; /* スクロール防止 */
-  background-color: #87ceeb; /* 初期背景：青空 */
-  transition: background-color 2s ease; /* 高度が上がった時の背景変化用 */
-}
-
-#game-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 1;
+    position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold;
+    color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 10;
 }
 
 #ui-layer {
-  position: absolute;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  width: 100%;
-  display: flex;
-  justify-content: center;
+    position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 10;
 }
 
-/* ここにジョイスティックや回転ボタンの具体的な装飾（丸み、ガラス風など）を追加 */
-.control-pad {
-  position: relative;
-  width: 200px;
-  height: 200px;
+/* ワンフィンガーUI */
+.control-pad { position: relative; width: 220px; height: 220px; }
+
+#joystick-base {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 100px; height: 100px; background: rgba(255,255,255,0.3); border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    touch-action: none; /* スマホのスワイプによる画面スクロールを完全に防止 */
 }
+#joystick-knob {
+    position: absolute; top: 25px; left: 25px; width: 50px; height: 50px;
+    background: rgba(255,255,255,0.8); border-radius: 50%; 
+    pointer-events: none; /* タッチイベントは親のbaseに任せる */
+    /* 指を離した時にスッと中央に戻るアニメーション */
+    transition: transform 0.1s ease-out; 
+}
+
 
 .rot-btn {
-  position: absolute;
-  /* あしあとで実装されていたような洗練されたデザインを後ほど適用 */
-  padding: 10px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.8);
-  font-weight: bold;
+    position: absolute; width: 60px; height: 60px; border-radius: 50%;
+    border: none; background: rgba(255, 255, 255, 0.9); font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
-/* 各ボタンの配置例（円周上に配置） */
-#btn-rot-x {
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+.rot-btn:active { transform: scale(0.9); }
+#btn-rot-x { top: -10px; left: 50%; transform: translateX(-50%); }
+#btn-rot-y { bottom: 10px; left: -10px; }
+#btn-rot-z { bottom: 10px; right: -10px; }
+
+/* ゲームオーバー画面 */
+#game-over-screen {
+    position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column;
+    justify-content: center; align-items: center; z-index: 100;
 }
-#btn-rot-y {
-  bottom: 20px;
-  left: 0;
+#game-over-screen h1 { font-size: 48px; color: #ff4444; margin-bottom: 20px; letter-spacing: 2px; }
+#final-score { font-size: 24px; color: white; margin-bottom: 40px; }
+#retry-btn {
+    padding: 15px 40px; font-size: 20px; font-weight: bold; border-radius: 30px;
+    border: none; background: #fff; color: #333; cursor: pointer;
 }
-#btn-rot-z {
-  bottom: 20px;
-  right: 0;
-}
+#retry-btn:active { background: #ccc; }
