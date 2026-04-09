@@ -4,8 +4,9 @@ const GRID_SIZE = 12;
 let scene, camera, renderer, controls;
 let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
 let characterGroup, characterArrow;
+let dropMarker; // 落下位置マーカー
 let lastTime = 0, dropTimer = 0;
-const dropInterval = 800;
+const dropInterval = 2000; // 落下速度（遅め）
 
 // ゲーム状態
 let isGameOver = false;
@@ -73,6 +74,17 @@ function init() {
     const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x000000, 0x000000);
     gridHelper.position.set(GRID_SIZE/2 - 0.5, 0, GRID_SIZE/2 - 0.5);
     scene.add(gridHelper);
+
+    // 落下位置マーカー（半透明の星形）
+    const markerGeo = new THREE.PlaneGeometry(1.2, 1.2);
+    const markerMat = new THREE.MeshBasicMaterial({
+        color: 0xffff00, transparent: true, opacity: 0.5,
+        depthWrite: false, side: THREE.DoubleSide
+    });
+    dropMarker = new THREE.Mesh(markerGeo, markerMat);
+    dropMarker.rotation.x = -Math.PI / 2; // 水平に寝かせる
+    dropMarker.position.y = 0.01; // 地面からわずかに浮かせてチラつき防止
+    scene.add(dropMarker);
 
     translationGroup = new THREE.Group();
     rotationGroup = new THREE.Group();
@@ -225,7 +237,7 @@ function checkCollision(targetX, targetY, targetZ) {
         const py = Math.round(worldPos.y);
         const pz = Math.round(worldPos.z);
 
-        if (py < 0 || px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
+        if (py < 1 || px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
             hasCollision = true;
         }
 
@@ -348,11 +360,29 @@ function animate(time) {
             moveTimer += deltaTime;
             if (moveTimer > moveInterval) {
                 moveTimer = 0;
+                // ジョイスティックはブロック移動のみ（キャラ移動は別）
                 if (activeDir === 'up')    tryMoveBlock(0, 0, -1);
                 if (activeDir === 'down')  tryMoveBlock(0, 0, 1);
                 if (activeDir === 'left')  tryMoveBlock(-1, 0, 0);
                 if (activeDir === 'right') tryMoveBlock(1, 0, 0);
             }
+        }
+
+        // マーカー：ブロックの真下（着地予定地）に表示
+        if (dropMarker) {
+            const spawn = getBlockSpawnPos();
+            // ブロックのXZ中心をマーカー位置として使用
+            const bx = translationGroup.position.x;
+            const bz = translationGroup.position.z;
+            // 着地Y（マーカーは地面 or 積み上がったブロックの上面）
+            let landY = 1;
+            landedBlocksGroup.children.forEach(b => {
+                if (Math.round(b.position.x) === Math.round(bx) &&
+                    Math.round(b.position.z) === Math.round(bz)) {
+                    landY = Math.max(landY, b.position.y + 1);
+                }
+            });
+            dropMarker.position.set(bx, landY + 0.01, bz);
         }
 
         updateCharacter();
