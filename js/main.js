@@ -246,16 +246,30 @@ function moveBackward() {
     charGridPos.z = nz;
 }
 
-function turnLeft() {
+function moveLeft() {
     if (isGameOver) return;
-    // (x,z) を CCW に90°回転: (x,z) → (z, -x)
-    charFacing = { x: charFacing.z, z: -charFacing.x };
+    // 左垂直方向（CCW）へ移動し、そちらを向く
+    const lx = charFacing.z;
+    const lz = -charFacing.x;
+    const nx = charGridPos.x + lx;
+    const nz = charGridPos.z + lz;
+    if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
+    charGridPos.x = nx;
+    charGridPos.z = nz;
+    charFacing = { x: lx, z: lz };
 }
 
-function turnRight() {
+function moveRight() {
     if (isGameOver) return;
-    // (x,z) を CW に90°回転: (x,z) → (-z, x)
-    charFacing = { x: -charFacing.z, z: charFacing.x };
+    // 右垂直方向（CW）へ移動し、そちらを向く
+    const rx = -charFacing.z;
+    const rz = charFacing.x;
+    const nx = charGridPos.x + rx;
+    const nz = charGridPos.z + rz;
+    if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
+    charGridPos.x = nx;
+    charGridPos.z = nz;
+    charFacing = { x: rx, z: rz };
 }
 
 function checkCollision(targetX, targetY, targetZ) {
@@ -395,17 +409,17 @@ function animate(time) {
     lastTime = time;
 
     if (!isGameOver) {
-        // 重力落下（Yのみ）
+        // 「キャラの位置と向き」を先に確定してから落下処理（バグ修正）
+        const front = getDropFront();
+        translationGroup.position.x = front.x;
+        translationGroup.position.z = front.z;
+
+        // 重力落下（上記のXZ確定後に実行するのが重要）
         dropTimer += deltaTime;
         if (dropTimer > dropInterval) {
             dropTimer = 0;
             tryMoveBlock(0, -1, 0);
         }
-
-        // ブロックのXZはキャラの1マス前に固定（キャラ位置と重ならないことを保証）
-        const front = getDropFront();
-        translationGroup.position.x = front.x;
-        translationGroup.position.z = front.z;
 
         // マーカー：ブロックの形料を地面に投影
         if (dropMarkerGroup) {
@@ -490,8 +504,8 @@ function setupUI() {
 
     addMoveBtn('btn-fwd',    moveForward);
     addMoveBtn('btn-bwd',    moveBackward);
-    addMoveBtn('btn-turn-l', turnLeft);
-    addMoveBtn('btn-turn-r', turnRight);
+    addMoveBtn('btn-turn-l', moveLeft);
+    addMoveBtn('btn-turn-r', moveRight);
 
     // 回転ボタン
     document.getElementById('btn-rot-x').addEventListener('pointerdown', () => {

@@ -32,11 +32,31 @@
           <button id="btn-bwd"    class="dpad-btn">▼</button>
         </div>
 
-        <!-- 回転ボタン -->
+        <!-- 回転ボタン（SVGイラスト付き） -->
         <div class="rot-group">
-          <button id="btn-rot-x" class="rot-btn">X回</button>
-          <button id="btn-rot-y" class="rot-btn">Y回</button>
-          <button id="btn-rot-z" class="rot-btn">Z回</button>
+          <!-- Y軸回転：水平スピン ↻ -->
+          <button id="btn-rot-y" class="rot-btn" title="水平に回転">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M 6 16 A 10 10 0 1 1 26 16"/>
+              <polyline points="26,10 26,16 20,16"/>
+            </svg>
+          </button>
+          <!-- X軸回転：前後にチルト（縦方向） -->
+          <button id="btn-rot-x" class="rot-btn" title="前後に回転">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="16" cy="16" rx="10" ry="4"/>
+              <polyline points="10,4 16,10 22,4"/>
+              <polyline points="10,28 16,22 22,28"/>
+            </svg>
+          </button>
+          <!-- Z軸回転：横にコロコロ（左右方向） -->
+          <button id="btn-rot-z" class="rot-btn" title="横に回転">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="16" cy="16" rx="4" ry="10"/>
+              <polyline points="4,10 10,16 4,22"/>
+              <polyline points="28,10 22,16 28,22"/>
+            </svg>
+          </button>
         </div>
 
       </div>
