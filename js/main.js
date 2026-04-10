@@ -4,11 +4,11 @@ const GRID_SIZE = 12;
 let scene, camera, renderer, controls;
 let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
 let characterGroup, characterArrow;
-let armLeft, armRight;       // 動的に伸縮する腕
+let armGroup; // 動的に伸縮する「有機的な腕」のグループ
 let dropMarkerGroup; // 落下形状マーカーグループ
 let directionArrow; // 向き矢印
 let lastTime = 0, dropTimer = 0;
-const dropInterval = 2000; // 落下速度（遅め）
+const dropInterval = 2000; // 落下速度
 
 // ゲーム状態
 let isGameOver = false;
@@ -26,26 +26,24 @@ let moveTimer = 0;
 const moveInterval = 150;
 
 // カメラのデフォルト設定
-const DEFAULT_CAM = { x: GRID_SIZE/2, y: 25, z: GRID_SIZE + 15 };
-const DEFAULT_TARGET = { x: GRID_SIZE/2, y: 0, z: GRID_SIZE/2 };
+const DEFAULT_CAM = { x: GRID_SIZE / 2, y: 25, z: GRID_SIZE + 15 };
+const DEFAULT_TARGET = { x: GRID_SIZE / 2, y: 0, z: GRID_SIZE / 2 };
 
 // ダブルタップ検出
 let lastTapTime = 0;
 
 const SHAPES = [
-    // 既存
-    [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:-1,y:0,z:0}, {x:-1,y:1,z:0}], // L
-    [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:-1,y:0,z:0}, {x:2,y:0,z:0}],  // I
-    [{x:0,y:0,z:0}, {x:-1,y:0,z:0}, {x:1,y:0,z:0}, {x:0,y:1,z:0}],  // T
-    [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:0,y:1,z:0}, {x:1,y:1,z:0}],   // O
-    // 新規追加
-    [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:1,y:1,z:0}, {x:2,y:1,z:0}],   // S
-    [{x:0,y:1,z:0}, {x:1,y:1,z:0}, {x:1,y:0,z:0}, {x:2,y:0,z:0}],   // Z
-    [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:-1,y:0,z:0}, {x:1,y:1,z:0}],  // J
-    [{x:0,y:0,z:0}, {x:0,y:1,z:0}, {x:0,y:2,z:0}, {x:1,y:2,z:0}],   // 縦L
-    [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:0,y:0,z:1}, {x:1,y:0,z:1}, {x:0,y:1,z:0}], // 凸3D
-    [{x:0,y:0,z:0}, {x:1,y:0,z:0}, {x:0,y:0,z:1}, {x:1,y:1,z:1}],   // 斜め3D
-    [{x:0,y:0,z:0}, {x:0,y:1,z:0}, {x:0,y:2,z:0}, {x:0,y:0,z:1}, {x:0,y:0,z:-1}], // 十字縦
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: -1, y: 1, z: 0 }], // L
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }],  // I
+    [{ x: 0, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }],  // T
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 1, y: 1, z: 0 }],   // O
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 1, y: 1, z: 0 }, { x: 2, y: 1, z: 0 }],   // S
+    [{ x: 0, y: 1, z: 0 }, { x: 1, y: 1, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }],   // Z
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 1, y: 1, z: 0 }],  // J
+    [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 1, y: 2, z: 0 }],   // 縦L
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 1, y: 0, z: 1 }, { x: 0, y: 1, z: 0 }], // 凸3D
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 1, y: 1, z: 1 }],   // 斜め3D
+    [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }], // 十字縦
 ];
 
 function init() {
@@ -74,14 +72,12 @@ function init() {
     scene.add(dirLight);
 
     const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x000000, 0x000000);
-    gridHelper.position.set(GRID_SIZE/2 - 0.5, 0, GRID_SIZE/2 - 0.5);
+    gridHelper.position.set(GRID_SIZE / 2 - 0.5, 0, GRID_SIZE / 2 - 0.5);
     scene.add(gridHelper);
 
-    // 落下形状マーカーグループ（毎フレーム再構築）
     dropMarkerGroup = new THREE.Group();
     scene.add(dropMarkerGroup);
 
-    // 向き矢印（ArrowHelper）
     directionArrow = new THREE.ArrowHelper(
         new THREE.Vector3(0, 0, -1),
         new THREE.Vector3(0, 0.1, 0),
@@ -109,12 +105,9 @@ function init() {
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // ダブルタップで視点リセット
     renderer.domElement.addEventListener('pointerdown', (e) => {
         const now = Date.now();
-        if (now - lastTapTime < 300) {
-            resetCamera();
-        }
+        if (now - lastTapTime < 300) resetCamera();
         lastTapTime = now;
     });
 
@@ -122,7 +115,6 @@ function init() {
 }
 
 function resetCamera() {
-    // 現在のcharHeightに合わせてリセット
     const baseY = Math.max(0, charHeight);
     camera.position.set(DEFAULT_CAM.x, DEFAULT_CAM.y + baseY, DEFAULT_CAM.z);
     controls.target.set(DEFAULT_TARGET.x, baseY, DEFAULT_TARGET.z);
@@ -132,34 +124,34 @@ function resetCamera() {
 function initCharacter() {
     characterGroup = new THREE.Group();
 
-    // ===== 画像をスプライト（ビルボード）として表示 =====
-    // Canvas経由で白背景を透明に変換してからテクスチャ化
-    const img = new Image();
-    img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width  = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        const id = ctx.getImageData(0, 0, img.width, img.height);
-        const d  = id.data;
-        for (let i = 0; i < d.length; i += 4) {
-            // 白(R>210, G>210, B>210)を透明に
-            if (d[i] > 210 && d[i+1] > 210 && d[i+2] > 210) d[i+3] = 0;
-        }
-        ctx.putImageData(id, 0, 0);
+    // ===== 3Dモデル（.glb）の読み込み =====
+    const loader = new THREE.GLTFLoader();
 
-        const tex = new THREE.CanvasTexture(canvas);
-        const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-        const sprite = new THREE.Sprite(spriteMat);
-        // 画像は正方形(512x512)なので縦横比を保って2マス分の高さ
-        sprite.scale.set(1.8, 1.8, 1);
-        sprite.position.y = 0.9; // 地面から上に
-        characterGroup.add(sprite);
-    };
-    img.src = './無題6_20260409214610.PNG';
+    // ご自身で作ったモデルのパスに合わせてください
+    loader.load('./ghost.glb', function (gltf) {
+        const model = gltf.scene;
 
-    // ===== 向き矢印（足元の小さいコーン） =====
+        model.scale.set(1.0, 1.0, 1.0);
+        model.position.y = 0.5; // モデルの基準点に応じて調整
+
+        model.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+
+        characterGroup.add(model);
+    }, undefined, function (error) {
+        console.error('3Dモデルの読み込みに失敗しました:', error);
+        // エラー時の仮モデル（赤い箱）
+        const fallbackGeo = new THREE.BoxGeometry(0.8, 1, 0.8);
+        const fallbackMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+        const fallbackMesh = new THREE.Mesh(fallbackGeo, fallbackMat);
+        fallbackMesh.position.y = 0.5;
+        characterGroup.add(fallbackMesh);
+    });
+
     const arrowGeo = new THREE.ConeGeometry(0.1, 0.3, 4);
     const arrowMat = new THREE.MeshLambertMaterial({ color: 0xff5500 });
     characterArrow = new THREE.Mesh(arrowGeo, arrowMat);
@@ -170,14 +162,9 @@ function initCharacter() {
     characterGroup.position.set(charGridPos.x, 0, charGridPos.z);
     scene.add(characterGroup);
 
-    // ===== 動的な腕（ワールド空間） =====
-    // updateArms()で毎フレーム肩→ブロック底面まで伸縮させる
-    const armMat = new THREE.MeshLambertMaterial({ color: 0xe0dfff });
-    const armGeo = new THREE.CylinderGeometry(0.055, 0.072, 1, 6);
-    armLeft  = new THREE.Mesh(armGeo, armMat);
-    armRight = new THREE.Mesh(armGeo, armMat);
-    scene.add(armLeft);
-    scene.add(armRight);
+    // ===== 有機的な腕のグループ =====
+    armGroup = new THREE.Group();
+    scene.add(armGroup);
 }
 
 function updateHPDisplay() {
@@ -187,11 +174,11 @@ function updateHPDisplay() {
     for (let i = 0; i < 5; i++) {
         const heart = document.createElement('span');
         if (i < hp) {
-            heart.textContent = '\u2665'; // 塗りつぶしハート
+            heart.textContent = '\u2665';
             heart.style.color = '#ff2222';
             heart.style.textShadow = '0 0 8px #ff6666, 0 0 18px #ff0000';
         } else {
-            heart.textContent = '\u2661'; // 空白ハート
+            heart.textContent = '\u2661';
             heart.style.color = 'rgba(255,255,255,0.3)';
             heart.style.textShadow = 'none';
         }
@@ -208,7 +195,6 @@ function startGame() {
     prevCharHeight = 0;
     charFacing = { x: 0, z: -1 };
 
-    // キャラクターを初期位置に戻す
     characterGroup.position.set(charGridPos.x, 0, charGridPos.z);
 
     while (landedBlocksGroup.children.length > 0) landedBlocksGroup.remove(landedBlocksGroup.children[0]);
@@ -232,19 +218,16 @@ function spawnBlock() {
         blockGroup.add(mesh);
     });
 
-    // キャラの1マス前から落とす（0.5オフセットで地面に接地）
     const front = getDropFront();
-    const spawnY = Math.max(charHeight + 8, 12) + 0.5; // 半ステップオフセット
+    const spawnY = Math.max(charHeight + 8, 12) + 0.5;
     translationGroup.position.set(front.x, spawnY, front.z);
 }
 
-// キャラの1マス前の着地予定地を返す（絶対にキャラ位置と重ならない）
 function getDropFront() {
     const fx = charGridPos.x + charFacing.x;
     const fz = charGridPos.z + charFacing.z;
     const cx = Math.max(0, Math.min(GRID_SIZE - 1, fx));
     const cz = Math.max(0, Math.min(GRID_SIZE - 1, fz));
-    // クランプ後もキャラと同じなら別の隣接セルを探す
     if (cx === charGridPos.x && cz === charGridPos.z) {
         const candidates = [
             { x: charGridPos.x + 1, z: charGridPos.z },
@@ -262,7 +245,6 @@ function moveForward() {
     const nx = charGridPos.x + charFacing.x;
     const nz = charGridPos.z + charFacing.z;
     if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
-    // 1マス以上の段差は登れない
     if (getHeightAt(nx, nz) - charHeight > 1) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
@@ -273,7 +255,6 @@ function moveBackward() {
     const nx = charGridPos.x - charFacing.x;
     const nz = charGridPos.z - charFacing.z;
     if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
-    // 1マス以上の段差は登れない
     if (getHeightAt(nx, nz) - charHeight > 1) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
@@ -281,13 +262,11 @@ function moveBackward() {
 
 function turnLeft() {
     if (isGameOver) return;
-    // その場で左に向きを変える（移動なし）
     charFacing = { x: charFacing.z, z: -charFacing.x };
 }
 
 function turnRight() {
     if (isGameOver) return;
-    // その場で右に向きを変える（移動なし）
     charFacing = { x: -charFacing.z, z: charFacing.x };
 }
 
@@ -309,10 +288,9 @@ function checkCollision(targetX, targetY, targetZ) {
         tempCube.getWorldPosition(worldPos);
 
         const px = Math.round(worldPos.x);
-        const py = Math.round(worldPos.y); // ブロック間充突判定用
+        const py = Math.round(worldPos.y);
         const pz = Math.round(worldPos.z);
 
-        // 床判定：ブロック中心が 0.5 未満なら押し返す→地面充突
         if (worldPos.y < 0.5 || px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
             hasCollision = true;
         }
@@ -348,48 +326,35 @@ function lockBlock() {
         cube.getWorldPosition(worldPos);
         const wx = Math.round(worldPos.x);
         const wz = Math.round(worldPos.z);
-        // キャラの位置には絶対に置かない
         if (wx === charGridPos.x && wz === charGridPos.z) return;
         const newCube = cube.clone();
-        // Y座標は 0.5単位グリッドに丸める（底面が地面y=0に接地）
-        newCube.position.set(
-            wx,
-            Math.round(worldPos.y * 2) / 2, // 0.5単位に書ける
-            wz
-        );
+        newCube.position.set(wx, Math.round(worldPos.y * 2) / 2, wz);
         landedBlocksGroup.add(newCube);
     });
 
-    // ブロック着地後にキャラの高さチェック（落下ダメージ）
     checkFallDamage();
-
     spawnBlock();
 }
 
 function getHeightAt(x, z) {
-    // 底面y=0に接地する坐標系：ブロックは y=0.5, 1.5, 2.5...に中心を持つ
-    // getHeightAtは「スタックの上面Y」 = 1, 2, 3... を返す
     let max = 0;
     landedBlocksGroup.children.forEach(b => {
         if (Math.round(b.position.x) === x && Math.round(b.position.z) === z) {
-            max = Math.max(max, b.position.y + 0.5); // top of block
+            max = Math.max(max, b.position.y + 0.5);
         }
     });
-    return max; // 0=地面, 1=1段, 2=2段...
+    return max;
 }
 
 function checkFallDamage() {
-    // キャラの足元の高さを再計算
     const newHeight = getHeightAt(charGridPos.x, charGridPos.z);
     const fall = prevCharHeight - newHeight;
     if (fall >= 4) {
-        const dmg = fall - 3; // 4マス落下で1ダメージ、5マスで2ダメージ…
+        const dmg = fall - 3;
         hp = Math.max(0, hp - dmg);
         updateHPDisplay();
         showDamageEffect();
-        if (hp <= 0) {
-            triggerGameOver();
-        }
+        if (hp <= 0) triggerGameOver();
     }
     prevCharHeight = newHeight;
 }
@@ -408,80 +373,84 @@ function triggerGameOver() {
 }
 
 function updateCharacter() {
-    // 向き矢印を更新
     if (directionArrow) {
         const dir = new THREE.Vector3(charFacing.x, 0, charFacing.z).normalize();
         directionArrow.setDirection(dir);
-        directionArrow.position.set(
-            charGridPos.x,
-            charHeight + 0.1,
-            charGridPos.z
-        );
+        directionArrow.position.set(charGridPos.x, charHeight + 0.1, charGridPos.z);
     }
 
-    // キャラクターの向きをモデルに反映
     const angle = Math.atan2(charFacing.x, charFacing.z);
     characterGroup.rotation.y = angle;
 
-    // キャラの乗る高さ
     charHeight = getHeightAt(charGridPos.x, charGridPos.z);
 
-    // キャラの外観を滑らかに
     characterGroup.position.x += (charGridPos.x - characterGroup.position.x) * 0.2;
     characterGroup.position.z += (charGridPos.z - characterGroup.position.z) * 0.2;
     characterGroup.position.y += (charHeight - characterGroup.position.y) * 0.2;
 
     document.getElementById('score-display').innerText = `到達高度: ${charHeight}m`;
 
-    // 腕の伸縮を更新
     updateArms();
 }
 
-// 腕：毎フレーム、キャラ肖からブロック底面まで直線を引いてシリンダーを伸縮
+// ===== 有機的な腕の更新関数 =====
 function updateArms() {
-    if (!armLeft || !armRight) return;
+    if (!armGroup) return;
 
-    // キャラの肖（データ・ワールド座標）
+    // 毎フレーム古い腕を破棄して描き直す
+    while (armGroup.children.length > 0) {
+        const child = armGroup.children[0];
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+        armGroup.remove(child);
+    }
+
     const charWX = characterGroup.position.x;
     const charWY = characterGroup.position.y;
     const charWZ = characterGroup.position.z;
-    const shoulderY = charWY + 1.55; // 肖の高さ
-    const shoulderOffset = 0.38;     // 左右の肖幅
+    const shoulderY = charWY + 1.2;  // 肩の高さ
+    const shoulderOffset = 0.45;     // 肩幅
 
-    // 向きに合わせた肖の左右X・Zオフセット（キャラが向いている方向に垂直）
-    const perpX = charFacing.z * shoulderOffset;  // 向きに垂直の横方向
+    const perpX = charFacing.z * shoulderOffset;
     const perpZ = -charFacing.x * shoulderOffset;
 
     const lShoulder = new THREE.Vector3(charWX - perpX, shoulderY, charWZ - perpZ);
     const rShoulder = new THREE.Vector3(charWX + perpX, shoulderY, charWZ + perpZ);
 
-    // ブロックの底面（ブロックのXZ = キャラの1マス前）
     const blockPos = new THREE.Vector3(
         translationGroup.position.x,
-        translationGroup.position.y - 0.5, // ブロック底面
+        translationGroup.position.y - 0.4,
         translationGroup.position.z
     );
 
-    // 肖からブロック底面までの方向ベクトルを計算し、シリンダーを配置
-    function positionArm(arm, shoulder) {
-        const dir = new THREE.Vector3().subVectors(blockPos, shoulder);
-        const len = Math.max(0.05, dir.length());
+    // ブロックの左右に手を添える
+    const lHand = blockPos.clone().add(new THREE.Vector3(-perpX * 0.7, 0, -perpZ * 0.7));
+    const rHand = blockPos.clone().add(new THREE.Vector3(perpX * 0.7, 0, perpZ * 0.7));
 
-        arm.scale.y = len; // Y軸方向にスケール
+    function drawOrganicArm(start, end) {
+        // 中間地点を下げて、たるみ（重力感）を表現
+        const midPoint = new THREE.Vector3(
+            (start.x + end.x) / 2,
+            Math.min(start.y, end.y) - 0.6,
+            (start.z + end.z) / 2
+        );
 
-        // シリンダーのY軸をdirに向ける
-        const mid = shoulder.clone().add(blockPos).multiplyScalar(0.5);
-        arm.position.copy(mid);
+        // ベジェ曲線
+        const curve = new THREE.QuadraticBezierCurve3(start, midPoint, end);
+        const tubeGeo = new THREE.TubeGeometry(curve, 10, 0.08, 6, false);
+        const armMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); // ゴーストと同じ色
+        const armMesh = new THREE.Mesh(tubeGeo, armMat);
+        armGroup.add(armMesh);
 
-        // lookAtを使わず手動で正規化dirから回転計算
-        const up = new THREE.Vector3(0, 1, 0);
-        const normDir = dir.clone().normalize();
-        const quaternion = new THREE.Quaternion().setFromUnitVectors(up, normDir);
-        arm.quaternion.copy(quaternion);
+        // 先端の丸い手
+        const handGeo = new THREE.SphereGeometry(0.12, 8, 8);
+        const handMesh = new THREE.Mesh(handGeo, armMat);
+        handMesh.position.copy(end);
+        armGroup.add(handMesh);
     }
 
-    positionArm(armLeft,  lShoulder);
-    positionArm(armRight, rShoulder);
+    drawOrganicArm(lShoulder, lHand);
+    drawOrganicArm(rShoulder, rHand);
 }
 
 function animate(time) {
@@ -490,24 +459,19 @@ function animate(time) {
     lastTime = time;
 
     if (!isGameOver) {
-        // 「キャラの位置と向き」を先に確定してから落下処理（バグ修正）
         const front = getDropFront();
         translationGroup.position.x = front.x;
         translationGroup.position.z = front.z;
 
-        // 重力落下（上記のXZ確定後に実行するのが重要）
         dropTimer += deltaTime;
         if (dropTimer > dropInterval) {
             dropTimer = 0;
             tryMoveBlock(0, -1, 0);
         }
 
-        // マーカー：ブロックの形料を地面に投影
         if (dropMarkerGroup) {
-            // マーカーをリセット
             while (dropMarkerGroup.children.length > 0) dropMarkerGroup.remove(dropMarkerGroup.children[0]);
 
-            // 一時グループで各キューブの世界座標を計算
             const tmpT = new THREE.Group();
             tmpT.position.set(front.x, translationGroup.position.y, front.z);
             const tmpR = new THREE.Group();
@@ -534,11 +498,10 @@ function animate(time) {
                 if (seen.has(key)) return;
                 seen.add(key);
 
-                // このXZ位置の着地予定Yを計算
                 let landY = 0;
                 landedBlocksGroup.children.forEach(b => {
                     if (Math.round(b.position.x) === mx && Math.round(b.position.z) === mz) {
-                        landY = Math.max(landY, b.position.y + 0.5); // top of block
+                        landY = Math.max(landY, b.position.y + 0.5);
                     }
                 });
 
@@ -568,7 +531,6 @@ function animate(time) {
     renderer.render(scene, camera);
 }
 
-// ハードドロップ：即座に着地位置まで鎊め込む
 function hardDrop() {
     if (isGameOver) return;
     let dropped = false;
@@ -580,36 +542,33 @@ function hardDrop() {
             translationGroup.position.y = ty;
             dropped = true;
         } else {
-            lockBlock(); // 街物にぶつかったら即座に固定
+            lockBlock();
             break;
         }
     }
 }
 
 function setupUI() {
-    // ボタンを2回手に登録するヘルパー：タップで即時実行、長押しで追後繰り返し
     function addMoveBtn(id, action) {
         const btn = document.getElementById(id);
         if (!btn) return;
         let holdTimer = null;
         btn.addEventListener('pointerdown', () => {
-            action(); // たった1回実行
-            holdTimer = setInterval(action, moveInterval); // 長押しは自動繰り返し
+            action();
+            holdTimer = setInterval(action, moveInterval);
         });
-        btn.addEventListener('pointerup',     () => clearInterval(holdTimer));
-        btn.addEventListener('pointerleave',  () => clearInterval(holdTimer));
+        btn.addEventListener('pointerup', () => clearInterval(holdTimer));
+        btn.addEventListener('pointerleave', () => clearInterval(holdTimer));
         btn.addEventListener('pointercancel', () => clearInterval(holdTimer));
     }
 
-    addMoveBtn('btn-fwd',    moveForward);
-    addMoveBtn('btn-bwd',    moveBackward);
+    addMoveBtn('btn-fwd', moveForward);
+    addMoveBtn('btn-bwd', moveBackward);
     addMoveBtn('btn-turn-l', turnLeft);
     addMoveBtn('btn-turn-r', turnRight);
 
-    // 中央ボタン：ハードドロップ（即座着地）
     document.getElementById('btn-drop').addEventListener('pointerdown', hardDrop);
 
-    // 回転ボタン
     document.getElementById('btn-rot-x').addEventListener('pointerdown', () => {
         if (!isGameOver) { rotationGroup.rotation.x += Math.PI / 2; tryMoveBlock(0, 0, 0); }
     });
