@@ -6,7 +6,8 @@ let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
 let characterGroup, characterArrow;
 let armGroup;
 let dropMarkerGroup;
-let bgWalls = null; // 背景壁のメッシュ配列 [奔wall, 右wall, カメラ側wall, 左wall]
+let bgWalls   = null; // 背景壁のメッシュ配列 [奔wall, 右wall, カメラ側wall, 左wall]
+let goalWalls = null; // ゴール惑星外壁のメッシュ配列 [奔, 手前, 左, 右]
 let lastTime = 0, dropTimer = 0;
 const dropInterval = 2000;
 
@@ -193,14 +194,7 @@ function createBackgroundTower() {
         }
     });
 
-    // 天井
-    const topCap = new THREE.Mesh(
-        new THREE.PlaneGeometry(w, w),
-        new THREE.MeshBasicMaterial({ map: loader.load('ゴール惑星.png'), side: THREE.DoubleSide })
-    );
-    topCap.rotation.x = Math.PI / 2;
-    topCap.position.y = segmentsData.length * h;
-    bgGroup.add(topCap);
+    // 天井は削除（ゴール惑星外壁パネルで代替）
 }
 
 // ===== ゴール惑星の陸地（砂色プラットフォーム）=====
@@ -245,6 +239,7 @@ function createGoalLand() {
     const outerR  = fullW / 2;        // = 9（中心からの外縁距離）
     const ccx = 3.5, ccz = 3.5;       // グリッド中心
 
+    goalWalls = []; // [奥, 手前, 左, 右]
     [
         // [幅, px, pz, rotY]
         [fullW, ccx,          ccz - outerR, 0           ],  // 奥壁  (z = -5.5, +z向き)
@@ -256,6 +251,7 @@ function createGoalLand() {
         plane.position.set(px, panelCY, pz);
         plane.rotation.y = ry;
         scene.add(plane);
+        goalWalls.push(plane); // 参照を保存
     });
 
     // ===== y=208 の床（8×8グリッド内） =====
@@ -507,6 +503,11 @@ function checkCollision(targetX, targetY, targetZ) {
         if (worldPos.y < 0.5 || px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
             hasCollision = true;
         }
+        // y=208の床との衝突（グリッド内のみ）
+        const PERM_FLOOR = 208;
+        if (py <= PERM_FLOOR && px >= 0 && px < GRID_SIZE && pz >= 0 && pz < GRID_SIZE) {
+            hasCollision = true;
+        }
 
         landedBlocksGroup.children.forEach(landed => {
             if (Math.round(landed.position.x) === px &&
@@ -742,6 +743,17 @@ function animate(time) {
         bgWalls[1].forEach(m => m.visible = !(cx > hi)); // 右壁：カメラがx+方向に回り込んだとき非表示
         bgWalls[2].forEach(m => m.visible = !(cz > hi)); // カメラ側壁：デフォルトz=14>7.5なので非表示
         bgWalls[3].forEach(m => m.visible = !(cx < lo)); // 左壁：カメラがx負方向に回り込んだとき非表示
+    }
+
+    // ゴール惑星外壁パネルもカメラ位置で表示切替
+    if (goalWalls) {
+        const cx = camera.position.x;
+        const cz = camera.position.z;
+        const lo = -5.5, hi = 12.5; // 外縁の境界
+        goalWalls[0].visible = !(cz < lo); // 奥壁
+        goalWalls[1].visible = !(cz > hi); // 手前壁
+        goalWalls[2].visible = !(cx < lo); // 左壁
+        goalWalls[3].visible = !(cx > hi); // 右壁
     }
 
     controls.update();
