@@ -1,5 +1,5 @@
 // js/main.js
-const GRID_SIZE = 12;
+const GRID_SIZE = 8;
 
 let scene, camera, renderer, controls;
 let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
@@ -11,7 +11,7 @@ let lastTime = 0, dropTimer = 0;
 const dropInterval = 2000;
 
 let isGameOver = false;
-let charGridPos = { x: 5, z: 5 };
+let charGridPos = { x: 4, z: 4 };
 let charHeight = 0;
 let charFacing = { x: 0, z: -1 };
 
@@ -22,7 +22,7 @@ let activeDir = null;
 let moveTimer = 0;
 const moveInterval = 150;
 
-const DEFAULT_CAM = { x: GRID_SIZE / 2, y: 25, z: GRID_SIZE + 15 };
+const DEFAULT_CAM = { x: GRID_SIZE / 2, y: 15, z: GRID_SIZE + 10 };
 const DEFAULT_TARGET = { x: GRID_SIZE / 2, y: 0, z: GRID_SIZE / 2 };
 
 let lastTapTime = 0;
@@ -41,16 +41,17 @@ const SHAPES = [
     [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }],
 ];
 
-// ===== ゴースト生成（絵に近い形） =====
+// ===== ゴースト生成（ポップなデザイン） =====
 function createGhostMesh() {
     const ghostGroup = new THREE.Group();
-    const ghostMat = new THREE.MeshStandardMaterial({ 
-        color: 0xf0f0f0, 
-        roughness: 0.1,  // 低くするほどツヤツヤ
-        metalness: 0.1   // ほんのり光沢
-    });
-    const darkMat  = new THREE.MeshLambertMaterial({ color: 0x222222 });
+
+    // 白くてツヤツヤな素材
+    const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.1 });
+    // 目と口をネイビーに
+    const darkMat  = new THREE.MeshLambertMaterial({ color: 0x1a237e });
     const hlMat    = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    // アウトライン素材
+    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x1a237e, side: THREE.BackSide });
 
     // --- 胴体：縦長・下広がり ---
     const bodyGeo = new THREE.SphereGeometry(0.5, 64, 64);
@@ -60,10 +61,10 @@ function createGhostMesh() {
         const y = bPos.getY(i);
         const z = bPos.getZ(i);
         if (y >= 0) {
-            bPos.setY(i, y * 1.6); // 上を縦に伸ばす
+            bPos.setY(i, y * 1.6);
         } else {
             const t = Math.abs(y) / 0.5;
-            const flare = 1.0 + t * 0.9; // 下を横に広げる
+            const flare = 1.0 + t * 0.9;
             bPos.setX(i, x * flare);
             bPos.setZ(i, z * flare);
             bPos.setY(i, y * 0.55);
@@ -73,6 +74,12 @@ function createGhostMesh() {
     const body = new THREE.Mesh(bodyGeo, ghostMat);
     body.position.y = 0.65;
     ghostGroup.add(body);
+
+    // 胴体のアウトライン
+    const outlineBody = new THREE.Mesh(bodyGeo, outlineMat);
+    outlineBody.position.y = 0.65;
+    outlineBody.scale.set(1.05, 1.05, 1.05);
+    ghostGroup.add(outlineBody);
 
     // --- 目（左） ---
     const eyeGeo = new THREE.SphereGeometry(0.085, 12, 12);
@@ -118,6 +125,12 @@ function createGhostMesh() {
         jag.position.set(Math.sin(angle) * r, 0.28, Math.cos(angle) * r);
         jag.scale.set(1, 0.7, 1);
         ghostGroup.add(jag);
+
+        // 裾のアウトライン
+        const outlineJag = new THREE.Mesh(jagGeo, outlineMat);
+        outlineJag.position.copy(jag.position);
+        outlineJag.scale.set(1.1, 0.8, 1.1);
+        ghostGroup.add(outlineJag);
     }
 
     return ghostGroup;
@@ -126,8 +139,9 @@ function createGhostMesh() {
 function init() {
     const container = document.getElementById('game-container');
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.Fog(0x87CEEB, 20, 60);
+    // 背景を明るいミントブルーに
+    scene.background = new THREE.Color(0xdff4f3);
+    scene.fog = new THREE.Fog(0xdff4f3, 10, 40);
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(DEFAULT_CAM.x, DEFAULT_CAM.y, DEFAULT_CAM.z);
@@ -143,22 +157,24 @@ function init() {
     controls.maxPolarAngle = Math.PI / 2;
     controls.target.set(DEFAULT_TARGET.x, DEFAULT_TARGET.y, DEFAULT_TARGET.z);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x000000, 0x000000);
+    // グリッドの線もネイビーに
+    const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x1a237e, 0x1a237e);
     gridHelper.position.set(GRID_SIZE / 2 - 0.5, 0, GRID_SIZE / 2 - 0.5);
     scene.add(gridHelper);
 
     dropMarkerGroup = new THREE.Group();
     scene.add(dropMarkerGroup);
 
+    // 矢印の色をピンクに
     directionArrow = new THREE.ArrowHelper(
         new THREE.Vector3(0, 0, -1),
         new THREE.Vector3(0, 0.1, 0),
-        1.4, 0x00ff88, 0.5, 0.3
+        1.4, 0xff80ab, 0.8, 0.4
     );
     scene.add(directionArrow);
 
@@ -205,7 +221,7 @@ function initCharacter() {
     characterGroup.add(ghost);
 
     const arrowGeo = new THREE.ConeGeometry(0.1, 0.3, 4);
-    const arrowMat = new THREE.MeshLambertMaterial({ color: 0xff5500 });
+    const arrowMat = new THREE.MeshLambertMaterial({ color: 0xff80ab });
     characterArrow = new THREE.Mesh(arrowGeo, arrowMat);
     characterArrow.position.set(0, 0.06, -0.52);
     characterArrow.rotation.x = Math.PI / 2;
@@ -226,14 +242,14 @@ function updateHPDisplay() {
         const heart = document.createElement('span');
         if (i < hp) {
             heart.textContent = '\u2665';
-            heart.style.color = '#ff2222';
-            heart.style.textShadow = '0 0 8px #ff6666, 0 0 18px #ff0000';
+            heart.style.color = '#ff80ab';
+            heart.style.textShadow = '0 0 4px #fff, 0 0 10px #ff80ab';
         } else {
             heart.textContent = '\u2661';
-            heart.style.color = 'rgba(255,255,255,0.3)';
+            heart.style.color = 'rgba(255,255,255,0.8)';
             heart.style.textShadow = 'none';
         }
-        heart.style.fontSize = '28px';
+        heart.style.fontSize = '32px';
         hpDiv.appendChild(heart);
     }
 }
@@ -241,7 +257,7 @@ function updateHPDisplay() {
 function startGame() {
     isGameOver = false;
     hp = 5;
-    charGridPos = { x: 5, z: 5 };
+    charGridPos = { x: 4, z: 4 };
     charHeight = 0;
     prevCharHeight = 0;
     charFacing = { x: 0, z: -1 };
@@ -259,18 +275,28 @@ function spawnBlock() {
     rotationGroup.rotation.set(0, 0, 0);
 
     const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-    const color = new THREE.Color().setHSL(Math.random(), 0.8, 0.6);
+    // パステル調の色
+    const color = new THREE.Color().setHSL(Math.random(), 0.6, 0.8);
     const material = new THREE.MeshLambertMaterial({ color: color });
+    // ブロックにもアウトライン
+    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x1a237e, side: THREE.BackSide });
+
     const geometry = new THREE.BoxGeometry(1, 1, 1);
 
     shape.forEach(pos => {
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(pos.x, pos.y, pos.z);
+
+        const outlineMesh = new THREE.Mesh(geometry, outlineMat);
+        outlineMesh.scale.set(1.05, 1.05, 1.05);
+        mesh.add(outlineMesh);
+
         blockGroup.add(mesh);
     });
 
     const front = getDropFront();
-    const spawnY = Math.max(charHeight + 8, 12) + 0.5;
+    // ブロックの出現高さをおばけの高さ + 6 に
+    const spawnY = charHeight + 6;
     translationGroup.position.set(front.x, spawnY, front.z);
 }
 
@@ -477,11 +503,9 @@ function updateArms() {
     const lHand = blockPos.clone().add(new THREE.Vector3(-perpX * 0.8, 0, -perpZ * 0.8));
     const rHand = blockPos.clone().add(new THREE.Vector3(perpX * 0.8, 0, perpZ * 0.8));
 
-    const armMat = new THREE.MeshStandardMaterial({ 
-        color: 0xf0f0f0,
-        roughness: 0.1,
-        metalness: 0.1
-    });
+    // 腕もツヤツヤに
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.1 });
+    const armOutlineMat = new THREE.MeshBasicMaterial({ color: 0x1a237e, side: THREE.BackSide });
 
     function drawArm(start, end) {
         const dist = start.distanceTo(end);
@@ -501,21 +525,35 @@ function updateArms() {
             const radius = 0.12 * (1 - t * 0.5);
             const segCurve = new THREE.LineCurve3(points[i], points[i + 1]);
             const geo = new THREE.TubeGeometry(segCurve, 1, radius, 7, false);
-            armGroup.add(new THREE.Mesh(geo, armMat));
+
+            const armMesh = new THREE.Mesh(geo, armMat);
+            armGroup.add(armMesh);
+
+            const outlineMesh = new THREE.Mesh(geo, armOutlineMat);
+            outlineMesh.scale.setScalar(1.2);
+            armMesh.add(outlineMesh);
         }
 
-        // 手先の丸い球
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), armMat);
+        const handGeo = new THREE.SphereGeometry(0.13, 10, 10);
+        const hand = new THREE.Mesh(handGeo, armMat);
         hand.position.copy(end);
         armGroup.add(hand);
 
-        // 指3本
+        const handOutline = new THREE.Mesh(handGeo, armOutlineMat);
+        handOutline.scale.set(1.15, 1.15, 1.15);
+        hand.add(handOutline);
+
         for (let f = 0; f < 3; f++) {
             const fAngle = (f / 3) * Math.PI * 1.2 - Math.PI * 0.3;
             const fDir = new THREE.Vector3(Math.sin(fAngle) * 0.12, 0.08, Math.cos(fAngle) * 0.12);
-            const finger = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), armMat);
+            const fingerGeo = new THREE.SphereGeometry(0.05, 6, 6);
+            const finger = new THREE.Mesh(fingerGeo, armMat);
             finger.position.copy(end).add(fDir);
             armGroup.add(finger);
+
+            const fingerOutline = new THREE.Mesh(fingerGeo, armOutlineMat);
+            fingerOutline.scale.set(1.2, 1.2, 1.2);
+            finger.add(fingerOutline);
         }
     }
 
@@ -556,7 +594,8 @@ function animate(time) {
 
             const seen = new Set();
             const markerMat = new THREE.MeshBasicMaterial({
-                color: 0xffff00, transparent: true, opacity: 0.45,
+                color: 0xff80ab,
+                transparent: true, opacity: 0.45,
                 depthWrite: false, side: THREE.DoubleSide
             });
             blockGroup.children.forEach((cube, i) => {
@@ -584,8 +623,8 @@ function animate(time) {
 
         updateCharacter();
 
-        const skyColor = new THREE.Color(0x87CEEB);
-        const spaceColor = new THREE.Color(0x000011);
+        const skyColor = new THREE.Color(0xdff4f3);
+        const spaceColor = new THREE.Color(0x1a237e);
         const progress = Math.min(charHeight / 50, 1.0);
         const currentColor = skyColor.clone().lerp(spaceColor, progress);
         scene.background = currentColor;

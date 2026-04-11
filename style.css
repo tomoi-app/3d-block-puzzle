@@ -1,9 +1,10 @@
 * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-touch-callout: none; }
-body { overflow: hidden; font-family: sans-serif; }
+
+/* ▼▼ フォントをポップに変更 ▼▼ */
+body { overflow: hidden; font-family: 'M PLUS Rounded 1c', sans-serif; }
 
 #game-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
 
-/* ダメージフラッシュ */
 #damage-flash {
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
     background: rgba(255, 0, 0, 0);
@@ -11,12 +12,11 @@ body { overflow: hidden; font-family: sans-serif; }
     transition: opacity 0.3s ease-out;
 }
 
+/* ▼▼ 左上の高度表記を非表示に ▼▼ */
 #score-display {
-    position: absolute; top: 20px; left: 20px; font-size: 24px; font-weight: bold;
-    color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); z-index: 10;
+    display: none;
 }
 
-/* HP表示（右上） */
 #hp-display {
     position: absolute; top: 16px; right: 16px;
     display: flex; gap: 4px; z-index: 10;
@@ -32,71 +32,78 @@ body { overflow: hidden; font-family: sans-serif; }
     pointer-events: auto;
 }
 
-/* 十字キーレイアウト */
 .control-pad {
-    display: flex;
-    align-items: center;
-    gap: 24px;
+    display: flex; align-items: center; gap: 24px;
 }
 
 #dpad {
     display: grid;
     grid-template-columns: repeat(3, 56px);
     grid-template-rows: repeat(3, 56px);
-    gap: 4px;
-    touch-action: none;
+    gap: 4px; touch-action: none;
 }
 
+/* ▼▼ ボタンも少し丸っこくポップに ▼▼ */
 .dpad-btn {
-    width: 56px; height: 56px; border-radius: 12px;
-    border: none; background: rgba(255,255,255,0.85);
+    width: 56px; height: 56px; border-radius: 16px;
+    border: none; background: rgba(255,255,255,0.9);
     font-size: 22px; font-weight: bold; cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.35);
+    box-shadow: 0 6px 0px rgba(200,200,200,0.9);
     display: flex; align-items: center; justify-content: center;
+    color: #1a237e;
 }
-.dpad-btn:active { transform: scale(0.88); background: rgba(255,255,255,0.6); }
+.dpad-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0px rgba(200,200,200,0.9);
+    background: rgba(255,255,255,0.7);
+}
+
 #btn-fwd    { grid-column: 2; grid-row: 1; }
 #btn-turn-l { grid-column: 1; grid-row: 2; }
 .dpad-center {
     grid-column: 2; grid-row: 2;
-    background: rgba(255,255,255,0.2);
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.5);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50%; border: 2px solid rgba(255,255,255,0.6);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
     flex-direction: column; line-height: 1;
-    font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.85);
-    pointer-events: auto;
-    user-select: none;
+    font-size: 10px; font-weight: bold; color: #1a237e;
+    pointer-events: auto; user-select: none;
 }
-.dpad-center:active { background: rgba(255,220,0,0.5); transform: scale(0.88); }
+.dpad-center:active { background: rgba(255,220,0,0.6); transform: scale(0.88); }
 #btn-turn-r { grid-column: 3; grid-row: 2; }
 #btn-bwd    { grid-column: 2; grid-row: 3; }
 
-/* 回転ボタングループ */
-.rot-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
+.rot-group { display: flex; flex-direction: column; gap: 8px; }
 
 .rot-btn {
     width: 60px; height: 60px; border-radius: 50%;
     border: none; background: rgba(255,255,255,0.9); font-weight: bold; font-size: 13px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer;
+    box-shadow: 0 6px 0px rgba(200,200,200,0.9); cursor: pointer;
+    color: #1a237e;
 }
-.rot-btn:active { transform: scale(0.9); }
+.rot-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0px rgba(200,200,200,0.9);
+}
 
-/* ゲームオーバー画面 */
 #game-over-screen {
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column;
+    background: rgba(223, 244, 243, 0.9);
+    display: flex; flex-direction: column;
     justify-content: center; align-items: center; z-index: 100;
 }
-#game-over-screen h1 { font-size: 48px; color: #ff4444; margin-bottom: 20px; letter-spacing: 2px; }
-#final-score { font-size: 24px; color: white; margin-bottom: 40px; }
-#retry-btn {
-    padding: 15px 40px; font-size: 20px; font-weight: bold; border-radius: 30px;
-    border: none; background: #fff; color: #333; cursor: pointer;
+/* ▼▼ ゲームオーバー画面の文字をロゴ風に ▼▼ */
+#game-over-screen h1 {
+    font-size: 56px; color: #ff80ab; margin-bottom: 20px; letter-spacing: 2px;
+    text-shadow: -2px -2px 0 #1a237e, 2px -2px 0 #1a237e, -2px 2px 0 #1a237e, 2px 2px 0 #1a237e, 0px 4px 0 #1a237e;
 }
-#retry-btn:active { background: #ccc; }
+#final-score {
+    font-size: 28px; color: #fff; margin-bottom: 40px; font-weight: bold;
+    text-shadow: -1px -1px 0 #1a237e, 1px -1px 0 #1a237e, -1px 1px 0 #1a237e, 1px 1px 0 #1a237e, 0px 3px 0 #1a237e;
+}
+#retry-btn {
+    padding: 15px 40px; font-size: 22px; font-weight: bold; border-radius: 30px;
+    border: none; background: #fff; color: #1a237e; cursor: pointer;
+    box-shadow: 0 6px 0px #1a237e;
+}
+#retry-btn:active { transform: translateY(4px); box-shadow: 0 2px 0px #1a237e; }
