@@ -18,6 +18,8 @@ let isGameOver = false;
 let charGridPos = { x: 4, z: 4 };
 let charHeight = 0;
 let charFacing = { x: 0, z: -1 };
+let goalStepCount = 0; // ゴール到達後の歩数カウンター
+let isEndingPlaying = false; // エンディング再生中フラグ
 
 // ===== デバッグ：ゴール手前2マスからスタート =====
 // falseに変えると通常スタートに戻る
@@ -374,6 +376,8 @@ function startGame() {
 
     while (landedBlocksGroup.children.length > 0) landedBlocksGroup.remove(landedBlocksGroup.children[0]);
     heightCache = {}; // リセット
+    goalStepCount = 0;
+    isEndingPlaying = false;
 
     if (DEBUG_GOAL_START) {
         // キャラ位置に不可視の高さ柱を立ててheightCacheを設定
@@ -444,29 +448,55 @@ function getDropFront() {
     return { x: cx, z: cz };
 }
 
+const GOAL_Y_CONST = 7 * 30; // 210
+
+function triggerEnding() {
+    if (isEndingPlaying) return;
+    isEndingPlaying = true;
+    const screen = document.getElementById('ending-screen');
+    const video  = document.getElementById('ending-video');
+    screen.classList.add('active');
+    video.currentTime = 0;
+    video.play().catch(() => {}); // 自動再生失敗してもクラッシュしない
+    video.onended = () => {
+        screen.classList.remove('active');
+    };
+    // 画面タップでも閉じる
+    screen.addEventListener('click', () => {
+        video.pause();
+        screen.classList.remove('active');
+    }, { once: true });
+}
+
 function moveForward() {
-    if (isGameOver) return;
+    if (isGameOver || isEndingPlaying) return;
     const nx = charGridPos.x + charFacing.x;
     const nz = charGridPos.z + charFacing.z;
-    // ゴール高度到達時は外側五マスまで移動可能に拡張
-    const GOAL_Y = 7 * 30; // 210
-    const EXT    = charHeight >= GOAL_Y ? 5 : 0;
-    if (nx < -EXT || nx >= GRID_SIZE + EXT || nz < -EXT || nz >= GRID_SIZE + EXT) return;
+    const EXT = charHeight >= GOAL_Y_CONST ? 5 : 0;
+    if (nx < -EXT || nx >= GRID_SIZE + EXT || nz < -EXT || nz >= GRID_SIZE + EXT) {
+        // 外壁に当たった：ゴール後5歩以上ならエンディング
+        if (charHeight >= GOAL_Y_CONST && goalStepCount >= 5) triggerEnding();
+        return;
+    }
     if (getHeightAt(nx, nz) - charHeight > 1) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
+    if (charHeight >= GOAL_Y_CONST) goalStepCount++;
 }
 
 function moveBackward() {
-    if (isGameOver) return;
+    if (isGameOver || isEndingPlaying) return;
     const nx = charGridPos.x - charFacing.x;
     const nz = charGridPos.z - charFacing.z;
-    const GOAL_Y = 7 * 30;
-    const EXT    = charHeight >= GOAL_Y ? 5 : 0;
-    if (nx < -EXT || nx >= GRID_SIZE + EXT || nz < -EXT || nz >= GRID_SIZE + EXT) return;
+    const EXT = charHeight >= GOAL_Y_CONST ? 5 : 0;
+    if (nx < -EXT || nx >= GRID_SIZE + EXT || nz < -EXT || nz >= GRID_SIZE + EXT) {
+        if (charHeight >= GOAL_Y_CONST && goalStepCount >= 5) triggerEnding();
+        return;
+    }
     if (getHeightAt(nx, nz) - charHeight > 1) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
+    if (charHeight >= GOAL_Y_CONST) goalStepCount++;
 }
 
 function turnLeft() {
