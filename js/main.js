@@ -196,6 +196,39 @@ function createBackgroundTower() {
     bgGroup.add(topCap);
 }
 
+// ===== ゴール惑星の陸地（砂色プラットフォーム）=====
+function createGoalLand() {
+    const sandMat    = new THREE.MeshLambertMaterial({ color: 0xC8A96E }); // 砂色
+    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide });
+
+    // ゴール惑星はセグメント7（h=30なのでy=210から始まる）
+    const GOAL_Y = 7 * 30;       // 210
+    const LAND_THICK = 1;        // 厚さ1ブロック
+    const cy = GOAL_Y - 0.5;     // ブロック中心（頂面がy=210になるよう）
+
+    const ext = 5;               // 外側5ブロック分
+    const G   = GRID_SIZE;       // 8
+    const fullW = G + ext * 2;   // 18 （コーナー込み）
+
+    function addSlab(sx, sz, px, pz) {
+        const geo  = new THREE.BoxGeometry(sx, LAND_THICK, sz);
+        const mesh = new THREE.Mesh(geo, sandMat);
+        mesh.position.set(px, cy, pz);
+        // 黒いアウトライン
+        const outline = new THREE.Mesh(geo, outlineMat);
+        outline.scale.set(1.01, 1.3, 1.01);
+        mesh.add(outline);
+        scene.add(mesh);
+    }
+
+    // グリッド境界: x,z → [-0.5 ... 7.5]
+    // 外側5ブロック: -5.5 to -0.5 / 7.5 to 12.5
+    addSlab(fullW, ext,  3.5, -3.0);  // 奥 (z-方向), コーナー込み18×5
+    addSlab(fullW, ext,  3.5, 10.0);  // 手前 (z+方向), コーナー込み
+    addSlab(ext,   G,   -3.0,  3.5);  // 左 (x-方向), 8×5
+    addSlab(ext,   G,   10.0,  3.5);  // 右 (x+方向)
+}
+
 
 function init() {
     const container = document.getElementById('game-container');
@@ -255,8 +288,9 @@ function init() {
 
     initCharacter();
     
-    // 背景の塔を生成
+    // 背景の塔とゴール惑星の陸地を生成
     createBackgroundTower();
+    createGoalLand();
     
     setupUI();
     startGame();
@@ -356,7 +390,10 @@ function moveForward() {
     if (isGameOver) return;
     const nx = charGridPos.x + charFacing.x;
     const nz = charGridPos.z + charFacing.z;
-    if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
+    // ゴール高度到達時は外側五マスまで移動可能に拡張
+    const GOAL_Y = 7 * 30; // 210
+    const EXT    = charHeight >= GOAL_Y ? 5 : 0;
+    if (nx < -EXT || nx >= GRID_SIZE + EXT || nz < -EXT || nz >= GRID_SIZE + EXT) return;
     if (getHeightAt(nx, nz) - charHeight > 1) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
@@ -366,7 +403,9 @@ function moveBackward() {
     if (isGameOver) return;
     const nx = charGridPos.x - charFacing.x;
     const nz = charGridPos.z - charFacing.z;
-    if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) return;
+    const GOAL_Y = 7 * 30;
+    const EXT    = charHeight >= GOAL_Y ? 5 : 0;
+    if (nx < -EXT || nx >= GRID_SIZE + EXT || nz < -EXT || nz >= GRID_SIZE + EXT) return;
     if (getHeightAt(nx, nz) - charHeight > 1) return;
     charGridPos.x = nx;
     charGridPos.z = nz;
@@ -454,6 +493,13 @@ function getHeightAt(x, z) {
             max = Math.max(max, b.position.y + 0.5);
         }
     });
+    // ゴール惑星の陸地エリア（グリッド外側。5ブロック以内）は高さ210として認識
+    const GOAL_Y = 7 * 30; // 210
+    const EXT    = 5;
+    const isLand = (x < 0 || x >= GRID_SIZE || z < 0 || z >= GRID_SIZE)
+                && x >= -EXT && x < GRID_SIZE + EXT
+                && z >= -EXT && z < GRID_SIZE + EXT;
+    if (isLand) max = Math.max(max, GOAL_Y);
     return max;
 }
 
@@ -685,3 +731,12 @@ function setupUI() {
 }
 
 init();
+
+// スプラッシュスクリーン：タップでフェードアウト
+const splash = document.getElementById('splash-screen');
+if (splash) {
+    splash.addEventListener('pointerdown', () => {
+        splash.classList.add('hidden');
+        setTimeout(() => splash.remove(), 500);
+    });
+}

@@ -5,6 +5,31 @@ body { overflow: hidden; font-family: 'M PLUS Rounded 1c', sans-serif; }
 
 #game-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
 
+/* ===== スプラッシュスクリーン ===== */
+#splash-screen {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #ffffff;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    z-index: 1000; cursor: pointer;
+    transition: opacity 0.5s ease;
+}
+#splash-screen.hidden { opacity: 0; pointer-events: none; }
+#splash-img {
+    max-width: 92vw; max-height: 72vh;
+    object-fit: contain;
+}
+#tap-hint {
+    margin-top: 28px;
+    font-size: 22px; font-weight: bold; color: #111;
+    letter-spacing: 2px;
+    animation: tap-pulse 1.4s ease-in-out infinite;
+}
+@keyframes tap-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.25; }
+}
+
 #damage-flash {
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
     background: rgba(255, 0, 0, 0);
