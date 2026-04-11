@@ -398,7 +398,7 @@ function lockBlock() {
         const wz = Math.round(worldPos.z);
         if (wx === charGridPos.x && wz === charGridPos.z) return;
         const newCube = cube.clone();
-        newCube.position.set(wx, Math.max(0.5, Math.round(worldPos.y * 2) / 2), wz);
+        newCube.position.set(wx, worldPos.y - 0.5, wz);
         landedBlocksGroup.add(newCube);
     });
 
