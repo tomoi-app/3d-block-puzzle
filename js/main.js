@@ -4,102 +4,117 @@ const GRID_SIZE = 12;
 let scene, camera, renderer, controls;
 let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
 let characterGroup, characterArrow;
-let armGroup; // 動的に伸縮する「有機的な腕」のグループ
-let dropMarkerGroup; // 落下形状マーカーグループ
-let directionArrow; // 向き矢印
+let armGroup;
+let dropMarkerGroup;
+let directionArrow;
 let lastTime = 0, dropTimer = 0;
-const dropInterval = 2000; // 落下速度
+const dropInterval = 2000;
 
-// ゲーム状態
 let isGameOver = false;
 let charGridPos = { x: 5, z: 5 };
 let charHeight = 0;
-let charFacing = { x: 0, z: -1 }; // 最初は北向き
+let charFacing = { x: 0, z: -1 };
 
-// HP
 let hp = 5;
 let prevCharHeight = 0;
 
-// ジョイスティック用
 let activeDir = null;
 let moveTimer = 0;
 const moveInterval = 150;
 
-// カメラのデフォルト設定
 const DEFAULT_CAM = { x: GRID_SIZE / 2, y: 25, z: GRID_SIZE + 15 };
 const DEFAULT_TARGET = { x: GRID_SIZE / 2, y: 0, z: GRID_SIZE / 2 };
 
-// ダブルタップ検出
 let lastTapTime = 0;
 
 const SHAPES = [
-    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: -1, y: 1, z: 0 }], // L
-    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }],  // I
-    [{ x: 0, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }],  // T
-    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 1, y: 1, z: 0 }],   // O
-    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 1, y: 1, z: 0 }, { x: 2, y: 1, z: 0 }],   // S
-    [{ x: 0, y: 1, z: 0 }, { x: 1, y: 1, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }],   // Z
-    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 1, y: 1, z: 0 }],  // J
-    [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 1, y: 2, z: 0 }],   // 縦L
-    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 1, y: 0, z: 1 }, { x: 0, y: 1, z: 0 }], // 凸3D
-    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 1, y: 1, z: 1 }],   // 斜め3D
-    [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }], // 十字縦
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: -1, y: 1, z: 0 }],
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }],
+    [{ x: 0, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }],
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 1, y: 1, z: 0 }],
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 1, y: 1, z: 0 }, { x: 2, y: 1, z: 0 }],
+    [{ x: 0, y: 1, z: 0 }, { x: 1, y: 1, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }],
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: -1, y: 0, z: 0 }, { x: 1, y: 1, z: 0 }],
+    [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 1, y: 2, z: 0 }],
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 1, y: 0, z: 1 }, { x: 0, y: 1, z: 0 }],
+    [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 1, y: 1, z: 1 }],
+    [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }],
 ];
 
-// ===== Three.jsでゴーストの胴体を作る関数 =====
+// ===== ゴースト生成（絵に近い形） =====
 function createGhostMesh() {
     const ghostGroup = new THREE.Group();
-    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const ghostMat = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+    const darkMat  = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    const hlMat    = new THREE.MeshLambertMaterial({ color: 0xffffff });
 
-    // --- 胴体（球を変形） ---
-    const bodyGeo = new THREE.SphereGeometry(0.55, 32, 32);
-    const pos = bodyGeo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-        const y = pos.getY(i);
-        const x = pos.getX(i);
-        const z = pos.getZ(i);
-
+    // --- 胴体：縦長・下広がり ---
+    const bodyGeo = new THREE.SphereGeometry(0.5, 32, 32);
+    const bPos = bodyGeo.attributes.position;
+    for (let i = 0; i < bPos.count; i++) {
+        const x = bPos.getX(i);
+        const y = bPos.getY(i);
+        const z = bPos.getZ(i);
         if (y >= 0) {
-            // 上半分：少し縦に伸ばす
-            pos.setY(i, y * 1.3);
+            bPos.setY(i, y * 1.6); // 上を縦に伸ばす
         } else {
-            // 下半分：横に広げてスカート状に
-            const t = -y / 0.55; // 0〜1（下にいくほど1）
-            const flare = 1 + t * 0.6;
-            pos.setX(i, x * flare);
-            pos.setZ(i, z * flare);
-            pos.setY(i, y * 0.7); // 縦は少し短く
+            const t = Math.abs(y) / 0.5;
+            const flare = 1.0 + t * 0.9; // 下を横に広げる
+            bPos.setX(i, x * flare);
+            bPos.setZ(i, z * flare);
+            bPos.setY(i, y * 0.55);
         }
     }
     bodyGeo.computeVertexNormals();
-    const body = new THREE.Mesh(bodyGeo, mat);
-    body.position.y = 0.6;
+    const body = new THREE.Mesh(bodyGeo, ghostMat);
+    body.position.y = 0.65;
     ghostGroup.add(body);
 
     // --- 目（左） ---
-    const eyeMatDark = new THREE.MeshLambertMaterial({ color: 0x222222 });
-    const eyeGeo = new THREE.SphereGeometry(0.09, 12, 12);
-
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMatDark);
-    leftEye.position.set(-0.17, 0.75, 0.45);
+    const eyeGeo = new THREE.SphereGeometry(0.085, 12, 12);
+    const leftEye = new THREE.Mesh(eyeGeo, darkMat);
+    leftEye.position.set(-0.16, 0.82, 0.43);
     ghostGroup.add(leftEye);
 
+    // 白目ハイライト（左）
+    const hlGeo = new THREE.SphereGeometry(0.03, 8, 8);
+    const hlL = new THREE.Mesh(hlGeo, hlMat);
+    hlL.position.set(-0.14, 0.845, 0.5);
+    ghostGroup.add(hlL);
+
     // --- 目（右） ---
-    const rightEye = new THREE.Mesh(eyeGeo.clone(), eyeMatDark);
-    rightEye.position.set(0.17, 0.75, 0.45);
+    const rightEye = new THREE.Mesh(eyeGeo.clone(), darkMat);
+    rightEye.position.set(0.16, 0.82, 0.43);
     ghostGroup.add(rightEye);
 
-    // --- 口（困った表情：波形） ---
-    const mouthPoints = [];
-    for (let i = 0; i <= 8; i++) {
-        const t = (i / 8 - 0.5) * 0.35;
-        const wave = Math.sin(i / 8 * Math.PI * 2) * 0.04;
-        mouthPoints.push(new THREE.Vector3(t, 0.58 + wave, 0.47));
+    const hlR = new THREE.Mesh(hlGeo.clone(), hlMat);
+    hlR.position.set(0.18, 0.845, 0.5);
+    ghostGroup.add(hlR);
+
+    // --- 口：波打った困り顔 ---
+    const mouthPts = [];
+    const segments = 10;
+    for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const mx = (t - 0.5) * 0.44;
+        const wave = Math.sin(t * Math.PI * 2) * 0.03 - 0.02;
+        mouthPts.push(new THREE.Vector3(mx, 0.65 + wave, 0.46));
     }
-    const mouthCurve = new THREE.CatmullRomCurve3(mouthPoints);
-    const mouthGeo = new THREE.TubeGeometry(mouthCurve, 12, 0.025, 6, false);
-    const mouth = new THREE.Mesh(mouthGeo, eyeMatDark);
-    ghostGroup.add(mouth);
+    const mouthCurve = new THREE.CatmullRomCurve3(mouthPts);
+    const mouthGeo = new THREE.TubeGeometry(mouthCurve, 16, 0.022, 6, false);
+    ghostGroup.add(new THREE.Mesh(mouthGeo, darkMat));
+
+    // --- 裾のぎざぎざ ---
+    const jagCount = 6;
+    for (let i = 0; i < jagCount; i++) {
+        const angle = (i / jagCount) * Math.PI * 2;
+        const r = 0.42;
+        const jagGeo = new THREE.SphereGeometry(0.1, 8, 8);
+        const jag = new THREE.Mesh(jagGeo, ghostMat);
+        jag.position.set(Math.sin(angle) * r, 0.28, Math.cos(angle) * r);
+        jag.scale.set(1, 0.7, 1);
+        ghostGroup.add(jag);
+    }
 
     return ghostGroup;
 }
@@ -182,7 +197,6 @@ function resetCamera() {
 function initCharacter() {
     characterGroup = new THREE.Group();
 
-    // Three.jsで作ったゴーストを追加（GLBファイル不要！）
     const ghost = createGhostMesh();
     characterGroup.add(ghost);
 
@@ -196,7 +210,6 @@ function initCharacter() {
     characterGroup.position.set(charGridPos.x, 0, charGridPos.z);
     scene.add(characterGroup);
 
-    // ===== 有機的な腕のグループ =====
     armGroup = new THREE.Group();
     scene.add(armGroup);
 }
@@ -427,11 +440,10 @@ function updateCharacter() {
     updateArms();
 }
 
-// ===== 有機的な腕の更新関数 =====
+// ===== 腕：にょろにょろとブロックに伸びる =====
 function updateArms() {
     if (!armGroup) return;
 
-    // 毎フレーム古い腕を破棄して描き直す
     while (armGroup.children.length > 0) {
         const child = armGroup.children[0];
         if (child.geometry) child.geometry.dispose();
@@ -442,8 +454,9 @@ function updateArms() {
     const charWX = characterGroup.position.x;
     const charWY = characterGroup.position.y;
     const charWZ = characterGroup.position.z;
-    const shoulderY = charWY + 1.2;  // 肩の高さ
-    const shoulderOffset = 0.45;     // 肩幅
+
+    const shoulderY = charWY + 1.1;
+    const shoulderOffset = 0.38;
 
     const perpX = charFacing.z * shoulderOffset;
     const perpZ = -charFacing.x * shoulderOffset;
@@ -457,34 +470,49 @@ function updateArms() {
         translationGroup.position.z
     );
 
-    // ブロックの左右に手を添える
-    const lHand = blockPos.clone().add(new THREE.Vector3(-perpX * 0.7, 0, -perpZ * 0.7));
-    const rHand = blockPos.clone().add(new THREE.Vector3(perpX * 0.7, 0, perpZ * 0.7));
+    const lHand = blockPos.clone().add(new THREE.Vector3(-perpX * 0.8, 0, -perpZ * 0.8));
+    const rHand = blockPos.clone().add(new THREE.Vector3(perpX * 0.8, 0, perpZ * 0.8));
 
-    function drawOrganicArm(start, end) {
-        // 中間地点を下げて、たるみ（重力感）を表現
-        const midPoint = new THREE.Vector3(
+    const armMat = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+
+    function drawArm(start, end) {
+        const dist = start.distanceTo(end);
+        const sag = Math.min(dist * 0.4, 3.0);
+        const mid = new THREE.Vector3(
             (start.x + end.x) / 2,
-            Math.min(start.y, end.y) - 0.6,
+            Math.min(start.y, end.y) - sag,
             (start.z + end.z) / 2
         );
 
-        // ベジェ曲線
-        const curve = new THREE.QuadraticBezierCurve3(start, midPoint, end);
-        const tubeGeo = new THREE.TubeGeometry(curve, 10, 0.08, 6, false);
-        const armMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); // ゴーストと同じ色
-        const armMesh = new THREE.Mesh(tubeGeo, armMat);
-        armGroup.add(armMesh);
+        const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+        const segments = 16;
+        const points = curve.getPoints(segments);
 
-        // 先端の丸い手
-        const handGeo = new THREE.SphereGeometry(0.12, 8, 8);
-        const handMesh = new THREE.Mesh(handGeo, armMat);
-        handMesh.position.copy(end);
-        armGroup.add(handMesh);
+        for (let i = 0; i < segments; i++) {
+            const t = i / segments;
+            const radius = 0.12 * (1 - t * 0.5);
+            const segCurve = new THREE.LineCurve3(points[i], points[i + 1]);
+            const geo = new THREE.TubeGeometry(segCurve, 1, radius, 7, false);
+            armGroup.add(new THREE.Mesh(geo, armMat));
+        }
+
+        // 手先の丸い球
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), armMat);
+        hand.position.copy(end);
+        armGroup.add(hand);
+
+        // 指3本
+        for (let f = 0; f < 3; f++) {
+            const fAngle = (f / 3) * Math.PI * 1.2 - Math.PI * 0.3;
+            const fDir = new THREE.Vector3(Math.sin(fAngle) * 0.12, 0.08, Math.cos(fAngle) * 0.12);
+            const finger = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), armMat);
+            finger.position.copy(end).add(fDir);
+            armGroup.add(finger);
+        }
     }
 
-    drawOrganicArm(lShoulder, lHand);
-    drawOrganicArm(rShoulder, rHand);
+    drawArm(lShoulder, lHand);
+    drawArm(rShoulder, rHand);
 }
 
 function animate(time) {
@@ -567,14 +595,12 @@ function animate(time) {
 
 function hardDrop() {
     if (isGameOver) return;
-    let dropped = false;
     for (let i = 0; i < 60; i++) {
         const tx = translationGroup.position.x;
         const ty = translationGroup.position.y - 1;
         const tz = translationGroup.position.z;
         if (!checkCollision(tx, ty, tz)) {
             translationGroup.position.y = ty;
-            dropped = true;
         } else {
             lockBlock();
             break;
