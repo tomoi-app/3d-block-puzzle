@@ -131,80 +131,66 @@ function createGhostMesh() {
 // ===== 背景の塔（画像）を生成する関数 =====
 function createBackgroundTower() {
     const bgGroup = new THREE.Group();
-    // グリッドの中心に配置
-    bgGroup.position.set(GRID_SIZE / 2, 0, GRID_SIZE / 2);
+    // グリッド中央（3.5, 0, 3.5）に配置
+    bgGroup.position.set(3.5, 0, 3.5);
     scene.add(bgGroup);
 
     const loader = new THREE.TextureLoader();
-    
-    // 宇宙の画像を読み込む
     const texSpace = loader.load('宇宙.png');
-    texSpace.wrapS = THREE.ClampToEdgeWrapping;
-    texSpace.wrapT = THREE.ClampToEdgeWrapping;
 
-    // 高さごとの設定（下から順に）
     const segmentsData = [
-        { img: '地面.png',       type: 'all' },    // 0~30m
-        { img: '大気圏.png',     type: 'single' }, // 30~60m
-        { img: '月.png',         type: 'single' }, // 60~90m
-        { img: '金星.png',       type: 'single' }, // 90~120m
-        { img: '水星.png',       type: 'single' }, // 120~150m
-        { img: '太陽.png',       type: 'single' }, // 150~180m
-        { img: '宇宙.png',       type: 'all' },    // 180~210m
-        { img: 'ゴール惑星.png', type: 'all' }     // 210~240m
+        { img: '地面.png',       type: 'all' },
+        { img: '大気圏.png',     type: 'single' },
+        { img: '月.png',         type: 'single' },
+        { img: '金星.png',       type: 'single' },
+        { img: '水星.png',       type: 'single' },
+        { img: '太陽.png',       type: 'single' },
+        { img: '宇宙.png',       type: 'all' },
+        { img: 'ゴール惑星.png', type: 'all' }
     ];
 
-    const w = 40; // 面の幅
-    const h = 30; // 1つの画像につき縦30マス分の高さ
-    const dist = 20; // 中心から壁までの距離
+    const w = GRID_SIZE;        // 8×8グリッドに合わせた幅
+    const h = 30;               // 1セグメントの高さ
+    const dist = GRID_SIZE / 2; // グリッド半幅 = 4
 
-    // 底面のフタ（足元を見ても黒くならないように）
+    // 底面
     const groundCap = new THREE.Mesh(
-        new THREE.PlaneGeometry(w, w), 
+        new THREE.PlaneGeometry(w, w),
         new THREE.MeshBasicMaterial({ map: loader.load('地面.png'), side: THREE.DoubleSide })
     );
     groundCap.rotation.x = -Math.PI / 2;
     groundCap.position.y = -0.5;
     bgGroup.add(groundCap);
 
-    // 各高さのセグメントを構築
     segmentsData.forEach((seg, index) => {
         const texMain = loader.load(seg.img);
-        texMain.wrapS = THREE.ClampToEdgeWrapping;
-        texMain.wrapT = THREE.ClampToEdgeWrapping;
+        const y = index * h + (h / 2);
 
-        // 4面を作成
         for (let i = 0; i < 4; i++) {
-            // i=0 が初期カメラの真正面（奥側）。typeが'all'なら全面、'single'なら真正面だけメイン画像
+            // i=2 はカメラ側（+z方向）→ 非表示
+            if (i === 2) continue;
+
             const isPlanet = (seg.type === 'all') || (i === 0);
             const tex = isPlanet ? texMain : texSpace;
-            
-            // 光の影響を受けないMeshBasicMaterialを使用
-            const mat = new THREE.MeshBasicMaterial({ 
-                map: tex, 
-                side: THREE.DoubleSide
-            });
-            
+            const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
             const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-            // 縦位置を計算 (0段目はY=15が中心)
-            const y = index * h + (h / 2); 
-            
-            if (i === 0) { plane.position.set(0, y, -dist); plane.rotation.y = 0; }
-            if (i === 1) { plane.position.set(dist, y, 0); plane.rotation.y = -Math.PI / 2; }
-            if (i === 2) { plane.position.set(0, y, dist); plane.rotation.y = Math.PI; }
-            if (i === 3) { plane.position.set(-dist, y, 0); plane.rotation.y = Math.PI / 2; }
-            
+
+            // グリッド壁面の位置（dist=4がグリッドの端）
+            if (i === 0) { plane.position.set(0, y, -dist); plane.rotation.y = 0; }          // 奥
+            if (i === 1) { plane.position.set( dist, y, 0); plane.rotation.y = -Math.PI / 2; } // 右
+            if (i === 3) { plane.position.set(-dist, y, 0); plane.rotation.y =  Math.PI / 2; } // 左
+
             bgGroup.add(plane);
         }
     });
 
-    // 天井のフタ（ゴール惑星）
+    // 天井
     const topCap = new THREE.Mesh(
-        new THREE.PlaneGeometry(w, w), 
+        new THREE.PlaneGeometry(w, w),
         new THREE.MeshBasicMaterial({ map: loader.load('ゴール惑星.png'), side: THREE.DoubleSide })
     );
     topCap.rotation.x = Math.PI / 2;
-    topCap.position.y = segmentsData.length * h; 
+    topCap.position.y = segmentsData.length * h;
     bgGroup.add(topCap);
 }
 
@@ -343,7 +329,7 @@ function spawnBlock() {
     });
 
     const front = getDropFront();
-    const spawnY = charHeight + 7;
+    const spawnY = charHeight + 10;
     translationGroup.position.set(front.x, spawnY, front.z);
 }
 
@@ -538,35 +524,21 @@ function updateArms() {
 
         for (let i = 0; i < segments; i++) {
             const t = i / segments;
-            const radius = 0.08 * (1 - t * 0.2); 
+            const radius = 0.08 * (1 - t * 0.2);
             const segCurve = new THREE.LineCurve3(points[i], points[i + 1]);
             const geo = new THREE.TubeGeometry(segCurve, 1, radius, 7, false);
-            
-            const armSeg = new THREE.Mesh(geo, armMat);
-            const outlineSeg = new THREE.Mesh(geo, outlineMat);
-            outlineSeg.scale.set(1.3, 1.3, 1.3);
-            armSeg.add(outlineSeg);
-            armGroup.add(armSeg);
+            armGroup.add(new THREE.Mesh(geo, armMat));
         }
 
-        const handGeo = new THREE.SphereGeometry(0.13, 10, 10);
-        const hand = new THREE.Mesh(handGeo, armMat);
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), armMat);
         hand.position.copy(end);
-        const handOutline = new THREE.Mesh(handGeo, outlineMat);
-        handOutline.scale.set(1.15, 1.15, 1.15);
-        hand.add(handOutline);
         armGroup.add(hand);
 
         for (let f = 0; f < 3; f++) {
             const fAngle = (f / 3) * Math.PI * 1.2 - Math.PI * 0.3;
             const fDir = new THREE.Vector3(Math.sin(fAngle) * 0.12, 0.08, Math.cos(fAngle) * 0.12);
-            const fingerGeo = new THREE.SphereGeometry(0.05, 6, 6);
-            const finger = new THREE.Mesh(fingerGeo, armMat);
+            const finger = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), armMat);
             finger.position.copy(end).add(fDir);
-            
-            const fingerOutline = new THREE.Mesh(fingerGeo, outlineMat);
-            fingerOutline.scale.set(1.3, 1.3, 1.3);
-            finger.add(fingerOutline);
             armGroup.add(finger);
         }
     }
