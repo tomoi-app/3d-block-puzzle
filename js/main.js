@@ -154,8 +154,7 @@ function createBackgroundTower() {
         { img: '金星.png',       type: 'single' },
         { img: '水星.png',       type: 'single' },
         { img: '太陽.png',       type: 'single' },
-        { img: '宇宙.png',       type: 'all' },
-        { img: 'ゴール惑星.png', type: 'all' }
+        { img: '宇宙.png',       type: 'all' }
     ];
 
     const w = GRID_SIZE;        // 8×8グリッドに合わせた幅
@@ -258,6 +257,16 @@ function createGoalLand() {
         plane.rotation.y = ry;
         scene.add(plane);
     });
+
+    // ===== y=208 の床（8×8グリッド内） =====
+    const FLOOR_Y = 208;
+    const floorGeo = new THREE.BoxGeometry(G, 1, G);
+    const floorMesh = new THREE.Mesh(floorGeo, sandMat);
+    floorMesh.position.set(3.5, FLOOR_Y - 0.5, 3.5); // 頂面が y=208 になる中心
+    const floorOutline = new THREE.Mesh(floorGeo, outlineMat);
+    floorOutline.scale.set(1.01, 1.3, 1.01);
+    floorMesh.add(floorOutline);
+    scene.add(floorMesh);
 }
 
 
