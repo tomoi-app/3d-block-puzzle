@@ -88,22 +88,21 @@ body { overflow: hidden; font-family: 'M PLUS Rounded 1c', sans-serif; }
 
 #game-over-screen {
     position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(223, 244, 243, 0.9);
+    background: rgba(255, 255, 255, 0.92);
     display: flex; flex-direction: column;
     justify-content: center; align-items: center; z-index: 100;
 }
 /* ▼▼ ゲームオーバー画面の文字をロゴ風に ▼▼ */
 #game-over-screen h1 {
-    font-size: 56px; color: #ff80ab; margin-bottom: 20px; letter-spacing: 2px;
-    text-shadow: -2px -2px 0 #1a237e, 2px -2px 0 #1a237e, -2px 2px 0 #1a237e, 2px 2px 0 #1a237e, 0px 4px 0 #1a237e;
+    font-size: 56px; color: #FF4136; margin-bottom: 20px; letter-spacing: 2px;
+    text-shadow: -2px -2px 0 #111, 2px -2px 0 #111, -2px 2px 0 #111, 2px 2px 0 #111, 0px 4px 0 #111;
 }
 #final-score {
-    font-size: 28px; color: #fff; margin-bottom: 40px; font-weight: bold;
-    text-shadow: -1px -1px 0 #1a237e, 1px -1px 0 #1a237e, -1px 1px 0 #1a237e, 1px 1px 0 #1a237e, 0px 3px 0 #1a237e;
+    font-size: 28px; color: #111; margin-bottom: 40px; font-weight: bold;
 }
 #retry-btn {
     padding: 15px 40px; font-size: 22px; font-weight: bold; border-radius: 30px;
-    border: none; background: #fff; color: #1a237e; cursor: pointer;
-    box-shadow: 0 6px 0px #1a237e;
+    border: 3px solid #111; background: #fff; color: #111; cursor: pointer;
+    box-shadow: 0 6px 0px #111;
 }
-#retry-btn:active { transform: translateY(4px); box-shadow: 0 2px 0px #1a237e; }
+#retry-btn:active { transform: translateY(4px); box-shadow: 0 2px 0px #111; }

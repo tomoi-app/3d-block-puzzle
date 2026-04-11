@@ -46,12 +46,12 @@ function createGhostMesh() {
     const ghostGroup = new THREE.Group();
 
     // 白くてツヤツヤな素材
-    const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.1 });
-    // 目と口をネイビーに
-    const darkMat  = new THREE.MeshLambertMaterial({ color: 0x1a237e });
+    const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, metalness: 0.05 });
+    // 目と口を黒に
+    const darkMat  = new THREE.MeshLambertMaterial({ color: 0x111111 });
     const hlMat    = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    // アウトライン素材
-    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x1a237e, side: THREE.BackSide });
+    // アウトライン素材（黒）
+    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide });
 
     // --- 胴体：縦長・下広がり ---
     const bodyGeo = new THREE.SphereGeometry(0.5, 64, 64);
@@ -139,9 +139,9 @@ function createGhostMesh() {
 function init() {
     const container = document.getElementById('game-container');
     scene = new THREE.Scene();
-    // 背景を明るいミントブルーに
-    scene.background = new THREE.Color(0xdff4f3);
-    scene.fog = new THREE.Fog(0xdff4f3, 10, 40);
+    // 背景を白に
+    scene.background = new THREE.Color(0xffffff);
+    scene.fog = new THREE.Fog(0xffffff, 20, 60);
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(DEFAULT_CAM.x, DEFAULT_CAM.y, DEFAULT_CAM.z);
@@ -157,13 +157,20 @@ function init() {
     controls.maxPolarAngle = Math.PI / 2;
     controls.target.set(DEFAULT_TARGET.x, DEFAULT_TARGET.y, DEFAULT_TARGET.z);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // グリッドの線もネイビーに
-    const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x1a237e, 0x1a237e);
+    // 白い地面プレート（グリッド下）
+    const groundGeo = new THREE.BoxGeometry(GRID_SIZE + 0.5, 0.15, GRID_SIZE + 0.5);
+    const groundMat = new THREE.MeshLambertMaterial({ color: 0xf8f8f8 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.position.set(GRID_SIZE / 2 - 0.5, -0.1, GRID_SIZE / 2 - 0.5);
+    scene.add(ground);
+
+    // グリッド（黒細線）
+    const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x333333, 0xaaaaaa);
     gridHelper.position.set(GRID_SIZE / 2 - 0.5, 0, GRID_SIZE / 2 - 0.5);
     scene.add(gridHelper);
 
@@ -268,11 +275,12 @@ function spawnBlock() {
     rotationGroup.rotation.set(0, 0, 0);
 
     const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-    // パステル調の色
-    const color = new THREE.Color().setHSL(Math.random(), 0.6, 0.8);
+    // ビビッドな原色（青・赤・緑・黄・橙・紫）
+    const BLOCK_COLORS = [0x2196F3, 0xF44336, 0x4CAF50, 0xFFEB3B, 0xFF9800, 0xAB47BC, 0x00BCD4];
+    const color = BLOCK_COLORS[Math.floor(Math.random() * BLOCK_COLORS.length)];
     const material = new THREE.MeshLambertMaterial({ color: color });
-    // ブロックにもアウトライン
-    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x1a237e, side: THREE.BackSide });
+    // ブロックのアウトライン（黒）
+    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide });
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
 
@@ -594,9 +602,9 @@ function animate(time) {
 
         updateCharacter();
 
-        const skyColor = new THREE.Color(0xdff4f3);
-        const spaceColor = new THREE.Color(0x1a237e);
-        const progress = Math.min(charHeight / 50, 1.0);
+        const skyColor = new THREE.Color(0xffffff);
+        const spaceColor = new THREE.Color(0x888888);
+        const progress = Math.min(charHeight / 60, 1.0);
         const currentColor = skyColor.clone().lerp(spaceColor, progress);
         scene.background = currentColor;
         scene.fog.color = currentColor;
