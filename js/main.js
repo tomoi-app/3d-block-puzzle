@@ -138,20 +138,20 @@ function createBackgroundTower() {
     const loader = new THREE.TextureLoader();
     
     // 宇宙の画像を読み込む
-    const texSpace = loader.load('宇宙.jpg');
+    const texSpace = loader.load('宇宙.png');
     texSpace.wrapS = THREE.ClampToEdgeWrapping;
     texSpace.wrapT = THREE.ClampToEdgeWrapping;
 
     // 高さごとの設定（下から順に）
     const segmentsData = [
-        { img: '地面.jpg',       type: 'all' },    // 0~30m
-        { img: '大気圏.jpg',     type: 'single' }, // 30~60m
-        { img: '月.jpg',         type: 'single' }, // 60~90m
-        { img: '金星.jpg',       type: 'single' }, // 90~120m
-        { img: '水星.jpg',       type: 'single' }, // 120~150m
-        { img: '太陽.jpg',       type: 'single' }, // 150~180m
-        { img: '宇宙.jpg',       type: 'all' },    // 180~210m
-        { img: 'ゴール惑星.jpg', type: 'all' }     // 210~240m
+        { img: '地面.png',       type: 'all' },    // 0~30m
+        { img: '大気圏.png',     type: 'single' }, // 30~60m
+        { img: '月.png',         type: 'single' }, // 60~90m
+        { img: '金星.png',       type: 'single' }, // 90~120m
+        { img: '水星.png',       type: 'single' }, // 120~150m
+        { img: '太陽.png',       type: 'single' }, // 150~180m
+        { img: '宇宙.png',       type: 'all' },    // 180~210m
+        { img: 'ゴール惑星.png', type: 'all' }     // 210~240m
     ];
 
     const w = 40; // 面の幅
@@ -161,7 +161,7 @@ function createBackgroundTower() {
     // 底面のフタ（足元を見ても黒くならないように）
     const groundCap = new THREE.Mesh(
         new THREE.PlaneGeometry(w, w), 
-        new THREE.MeshBasicMaterial({ map: loader.load('地面.jpg'), side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ map: loader.load('地面.png'), side: THREE.DoubleSide })
     );
     groundCap.rotation.x = -Math.PI / 2;
     groundCap.position.y = -0.5;
@@ -201,7 +201,7 @@ function createBackgroundTower() {
     // 天井のフタ（ゴール惑星）
     const topCap = new THREE.Mesh(
         new THREE.PlaneGeometry(w, w), 
-        new THREE.MeshBasicMaterial({ map: loader.load('ゴール惑星.jpg'), side: THREE.DoubleSide })
+        new THREE.MeshBasicMaterial({ map: loader.load('ゴール惑星.png'), side: THREE.DoubleSide })
     );
     topCap.rotation.x = Math.PI / 2;
     topCap.position.y = segmentsData.length * h; 
