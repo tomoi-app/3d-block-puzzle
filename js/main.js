@@ -170,13 +170,6 @@ function init() {
     dropMarkerGroup = new THREE.Group();
     scene.add(dropMarkerGroup);
 
-    // 矢印の色をピンクに
-    directionArrow = new THREE.ArrowHelper(
-        new THREE.Vector3(0, 0, -1),
-        new THREE.Vector3(0, 0.1, 0),
-        1.4, 0xff80ab, 0.8, 0.4
-    );
-    scene.add(directionArrow);
 
     translationGroup = new THREE.Group();
     rotationGroup = new THREE.Group();
@@ -405,7 +398,7 @@ function lockBlock() {
         const wz = Math.round(worldPos.z);
         if (wx === charGridPos.x && wz === charGridPos.z) return;
         const newCube = cube.clone();
-        newCube.position.set(wx, Math.round(worldPos.y * 2) / 2, wz);
+        newCube.position.set(wx, Math.max(0.5, Math.round(worldPos.y * 2) / 2), wz);
         landedBlocksGroup.add(newCube);
     });
 
@@ -450,11 +443,6 @@ function triggerGameOver() {
 }
 
 function updateCharacter() {
-    if (directionArrow) {
-        const dir = new THREE.Vector3(charFacing.x, 0, charFacing.z).normalize();
-        directionArrow.setDirection(dir);
-        directionArrow.position.set(charGridPos.x, charHeight + 0.1, charGridPos.z);
-    }
 
     const angle = Math.atan2(charFacing.x, charFacing.z);
     characterGroup.rotation.y = angle;
@@ -505,7 +493,6 @@ function updateArms() {
 
     // 腕もツヤツヤに
     const armMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.1 });
-    const armOutlineMat = new THREE.MeshBasicMaterial({ color: 0x1a237e, side: THREE.BackSide });
 
     function drawArm(start, end) {
         const dist = start.distanceTo(end);
@@ -525,35 +512,19 @@ function updateArms() {
             const radius = 0.12 * (1 - t * 0.5);
             const segCurve = new THREE.LineCurve3(points[i], points[i + 1]);
             const geo = new THREE.TubeGeometry(segCurve, 1, radius, 7, false);
-
-            const armMesh = new THREE.Mesh(geo, armMat);
-            armGroup.add(armMesh);
-
-            const outlineMesh = new THREE.Mesh(geo, armOutlineMat);
-            outlineMesh.scale.setScalar(1.2);
-            armMesh.add(outlineMesh);
+            armGroup.add(new THREE.Mesh(geo, armMat));
         }
 
-        const handGeo = new THREE.SphereGeometry(0.13, 10, 10);
-        const hand = new THREE.Mesh(handGeo, armMat);
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), armMat);
         hand.position.copy(end);
         armGroup.add(hand);
-
-        const handOutline = new THREE.Mesh(handGeo, armOutlineMat);
-        handOutline.scale.set(1.15, 1.15, 1.15);
-        hand.add(handOutline);
 
         for (let f = 0; f < 3; f++) {
             const fAngle = (f / 3) * Math.PI * 1.2 - Math.PI * 0.3;
             const fDir = new THREE.Vector3(Math.sin(fAngle) * 0.12, 0.08, Math.cos(fAngle) * 0.12);
-            const fingerGeo = new THREE.SphereGeometry(0.05, 6, 6);
-            const finger = new THREE.Mesh(fingerGeo, armMat);
+            const finger = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), armMat);
             finger.position.copy(end).add(fDir);
             armGroup.add(finger);
-
-            const fingerOutline = new THREE.Mesh(fingerGeo, armOutlineMat);
-            fingerOutline.scale.set(1.2, 1.2, 1.2);
-            finger.add(fingerOutline);
         }
     }
 
