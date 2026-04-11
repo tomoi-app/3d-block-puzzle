@@ -6,6 +6,7 @@ let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
 let characterGroup, characterArrow;
 let armGroup;
 let dropMarkerGroup;
+let bgWalls = null; // 背景壁のメッシュ配列 [奔wall, 右wall, カメラ側wall, 左wall]
 let lastTime = 0, dropTimer = 0;
 const dropInterval = 2000;
 
@@ -162,25 +163,26 @@ function createBackgroundTower() {
     groundCap.position.y = -0.5;
     bgGroup.add(groundCap);
 
+    bgWalls = [[], [], [], []]; // 各壁面のメッシュを格納
+
     segmentsData.forEach((seg, index) => {
         const texMain = loader.load(seg.img);
         const y = index * h + (h / 2);
 
         for (let i = 0; i < 4; i++) {
-            // i=2 はカメラ側（+z方向）→ 非表示
-            if (i === 2) continue;
-
             const isPlanet = (seg.type === 'all') || (i === 0);
             const tex = isPlanet ? texMain : texSpace;
             const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
             const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
 
             // グリッド壁面の位置（dist=4がグリッドの端）
-            if (i === 0) { plane.position.set(0, y, -dist); plane.rotation.y = 0; }          // 奥
+            if (i === 0) { plane.position.set(0, y, -dist); plane.rotation.y = 0; }           // 奔
             if (i === 1) { plane.position.set( dist, y, 0); plane.rotation.y = -Math.PI / 2; } // 右
+            if (i === 2) { plane.position.set(0, y,  dist); plane.rotation.y = Math.PI; }      // カメラ側
             if (i === 3) { plane.position.set(-dist, y, 0); plane.rotation.y =  Math.PI / 2; } // 左
 
             bgGroup.add(plane);
+            bgWalls[i].push(plane); // 参照を保存
         }
     });
 
@@ -613,6 +615,20 @@ function animate(time) {
         const diffY = (targetCamY - controls.target.y) * 0.05;
         controls.target.y += diffY;
         camera.position.y += diffY;
+    }
+
+    // カメラ位置から背景壁の表示・非表示を動的に切り替え
+    if (bgWalls) {
+        const cx = camera.position.x;
+        const cz = camera.position.z;
+        // グリッドの境界（ワールド座標）
+        const lo = -0.5;              // xまzのグリッド最小値
+        const hi = GRID_SIZE - 0.5;  // xまzのグリッド最大値 = 7.5
+        // カメラが壁より外側にあるときその壁を非表示
+        bgWalls[0].forEach(m => m.visible = !(cz < lo)); // 奔壁：カメラがz負方向に回り込んだとき非表示
+        bgWalls[1].forEach(m => m.visible = !(cx > hi)); // 右壁：カメラがx+方向に回り込んだとき非表示
+        bgWalls[2].forEach(m => m.visible = !(cz > hi)); // カメラ側壁：デフォルトz=14>7.5なので非表示
+        bgWalls[3].forEach(m => m.visible = !(cx < lo)); // 左壁：カメラがx負方向に回り込んだとき非表示
     }
 
     controls.update();
