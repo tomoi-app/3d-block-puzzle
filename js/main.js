@@ -18,6 +18,11 @@ let charGridPos = { x: 4, z: 4 };
 let charHeight = 0;
 let charFacing = { x: 0, z: -1 };
 
+// ===== デバッグ：ゴール手前2マスからスタート =====
+// falseに変えると通常スタートに戻る
+const DEBUG_GOAL_START  = true;
+const DEBUG_GOAL_HEIGHT = 208; // y=210（ゴール）の2マス手前
+
 const moveInterval = 150;
 
 // カメラを8x8グリッドに合わせて少し近くに調整
@@ -230,6 +235,29 @@ function createGoalLand() {
     addSlab(fullW, ext,  3.5, 10.0);  // 手前 (z+方向), コーナー込み
     addSlab(ext,   G,   -3.0,  3.5);  // 左 (x-方向), 8×5
     addSlab(ext,   G,   10.0,  3.5);  // 右 (x+方向)
+
+    // ===== 外縁4面にゴール惑星.png を貼る =====
+    const loader   = new THREE.TextureLoader();
+    const goalTex  = loader.load('ゴール惑星.png');
+    const wallMat  = new THREE.MeshBasicMaterial({ map: goalTex, side: THREE.DoubleSide });
+
+    const panelH  = 20;               // 壁の高さ（地面から立ち上がる）
+    const panelCY = GOAL_Y + panelH / 2; // 壁の中心Y（陸地頂面=210からpanelH分上へ）
+    const outerR  = fullW / 2;        // = 9（中心からの外縁距離）
+    const ccx = 3.5, ccz = 3.5;       // グリッド中心
+
+    [
+        // [幅, px, pz, rotY]
+        [fullW, ccx,          ccz - outerR, 0           ],  // 奥壁  (z = -5.5, +z向き)
+        [fullW, ccx,          ccz + outerR, Math.PI     ],  // 手前壁(z = 12.5, -z向き)
+        [fullW, ccx - outerR, ccz,          Math.PI / 2 ],  // 左壁  (x = -5.5, +x向き)
+        [fullW, ccx + outerR, ccz,         -Math.PI / 2 ],  // 右壁  (x = 12.5, -x向き)
+    ].forEach(([w, px, pz, ry]) => {
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, panelH), wallMat);
+        plane.position.set(px, panelCY, pz);
+        plane.rotation.y = ry;
+        scene.add(plane);
+    });
 }
 
 
@@ -341,6 +369,27 @@ function startGame() {
 
     while (landedBlocksGroup.children.length > 0) landedBlocksGroup.remove(landedBlocksGroup.children[0]);
     heightCache = {}; // リセット
+
+    if (DEBUG_GOAL_START) {
+        // キャラ位置に不可視の高さ柱を立ててheightCacheを設定
+        const h = DEBUG_GOAL_HEIGHT;
+        const pillar = new THREE.Mesh(
+            new THREE.BoxGeometry(1, h, 1),
+            new THREE.MeshLambertMaterial({ color: 0x888888 })
+        );
+        pillar.position.set(charGridPos.x, h / 2, charGridPos.z);
+        landedBlocksGroup.add(pillar);
+        heightCache[`${charGridPos.x},${charGridPos.z}`] = h;
+        charHeight = h;
+        characterGroup.position.set(charGridPos.x, h, charGridPos.z);
+        // カメラをゴール高度に即ジャンプ
+        if (controls) {
+            controls.target.set(DEFAULT_TARGET.x, h, DEFAULT_TARGET.z);
+            camera.position.set(DEFAULT_CAM.x, DEFAULT_CAM.y + h, DEFAULT_CAM.z);
+            controls.update();
+        }
+    }
+
     document.getElementById('game-over-screen').style.display = 'none';
     spawnBlock();
 }
