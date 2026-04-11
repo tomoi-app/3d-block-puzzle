@@ -296,8 +296,9 @@ function spawnBlock() {
     });
 
     const front = getDropFront();
-    // ブロックの出現高さをおばけの高さ + 6 に
-    const spawnY = charHeight + 6;
+    // 落下先の現在の積み上げ高さを取得し、キャラ位置と比較して高い方の+4から落とす
+    const landHeight = getHeightAt(front.x, front.z);
+    const spawnY = Math.max(charHeight, landHeight) + 4;
     translationGroup.position.set(front.x, spawnY, front.z);
 }
 
