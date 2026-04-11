@@ -6,7 +6,6 @@ let translationGroup, rotationGroup, blockGroup, landedBlocksGroup;
 let characterGroup, characterArrow;
 let armGroup;
 let dropMarkerGroup;
-let directionArrow;
 let lastTime = 0, dropTimer = 0;
 const dropInterval = 2000;
 
@@ -15,12 +14,10 @@ let charGridPos = { x: 4, z: 4 };
 let charHeight = 0;
 let charFacing = { x: 0, z: -1 };
 
-
-let activeDir = null;
-let moveTimer = 0;
 const moveInterval = 150;
 
-const DEFAULT_CAM = { x: GRID_SIZE / 2, y: 15, z: GRID_SIZE + 10 };
+// カメラを8x8グリッドに合わせて少し近くに調整
+const DEFAULT_CAM = { x: GRID_SIZE / 2, y: 12, z: GRID_SIZE + 6 };
 const DEFAULT_TARGET = { x: GRID_SIZE / 2, y: 0, z: GRID_SIZE / 2 };
 
 let lastTapTime = 0;
@@ -39,19 +36,15 @@ const SHAPES = [
     [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }],
 ];
 
-// ===== ゴースト生成（ポップなデザイン） =====
+// ===== ゴースト生成（2Dイラスト風デザイン） =====
 function createGhostMesh() {
     const ghostGroup = new THREE.Group();
 
-    // 白くてツヤツヤな素材
-    const ghostMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, metalness: 0.05 });
-    // 目と口を黒に
-    const darkMat  = new THREE.MeshLambertMaterial({ color: 0x111111 });
-    const hlMat    = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    // アウトライン素材（黒）
+    const ghostMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const outlineMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide });
+    const darkMat  = new THREE.MeshLambertMaterial({ color: 0x111111 });
 
-    // --- 胴体：縦長・下広がり ---
+    // --- 胴体 ---
     const bodyGeo = new THREE.SphereGeometry(0.5, 64, 64);
     const bPos = bodyGeo.attributes.position;
     for (let i = 0; i < bPos.count; i++) {
@@ -73,34 +66,36 @@ function createGhostMesh() {
     body.position.y = 0.65;
     ghostGroup.add(body);
 
-    // 胴体のアウトライン
     const outlineBody = new THREE.Mesh(bodyGeo, outlineMat);
     outlineBody.position.y = 0.65;
     outlineBody.scale.set(1.05, 1.05, 1.05);
     ghostGroup.add(outlineBody);
 
-    // --- 目（左） ---
-    const eyeGeo = new THREE.SphereGeometry(0.085, 12, 12);
-    const leftEye = new THREE.Mesh(eyeGeo, darkMat);
+    // --- 目 ---
+    const eyeBaseGeo = new THREE.SphereGeometry(0.12, 16, 16);
+    const pupilGeo = new THREE.SphereGeometry(0.04, 16, 16);
+    
+    const leftEye = new THREE.Mesh(eyeBaseGeo, ghostMat);
     leftEye.position.set(-0.16, 0.82, 0.43);
+    const leftEyeOutline = new THREE.Mesh(eyeBaseGeo, outlineMat);
+    leftEyeOutline.scale.set(1.15, 1.15, 1.15);
+    leftEye.add(leftEyeOutline);
+    const leftPupil = new THREE.Mesh(pupilGeo, darkMat);
+    leftPupil.position.set(0.02, 0.0, 0.11);
+    leftEye.add(leftPupil);
     ghostGroup.add(leftEye);
 
-    // 白目ハイライト（左）
-    const hlGeo = new THREE.SphereGeometry(0.03, 8, 8);
-    const hlL = new THREE.Mesh(hlGeo, hlMat);
-    hlL.position.set(-0.14, 0.845, 0.5);
-    ghostGroup.add(hlL);
-
-    // --- 目（右） ---
-    const rightEye = new THREE.Mesh(eyeGeo.clone(), darkMat);
+    const rightEye = new THREE.Mesh(eyeBaseGeo, ghostMat);
     rightEye.position.set(0.16, 0.82, 0.43);
+    const rightEyeOutline = new THREE.Mesh(eyeBaseGeo, outlineMat);
+    rightEyeOutline.scale.set(1.15, 1.15, 1.15);
+    rightEye.add(rightEyeOutline);
+    const rightPupil = new THREE.Mesh(pupilGeo, darkMat);
+    rightPupil.position.set(-0.02, 0.0, 0.11);
+    rightEye.add(rightPupil);
     ghostGroup.add(rightEye);
 
-    const hlR = new THREE.Mesh(hlGeo.clone(), hlMat);
-    hlR.position.set(0.18, 0.845, 0.5);
-    ghostGroup.add(hlR);
-
-    // --- 口：波打った困り顔 ---
+    // --- 口 ---
     const mouthPts = [];
     const segments = 10;
     for (let i = 0; i <= segments; i++) {
@@ -124,7 +119,6 @@ function createGhostMesh() {
         jag.scale.set(1, 0.7, 1);
         ghostGroup.add(jag);
 
-        // 裾のアウトライン
         const outlineJag = new THREE.Mesh(jagGeo, outlineMat);
         outlineJag.position.copy(jag.position);
         outlineJag.scale.set(1.1, 0.8, 1.1);
@@ -134,12 +128,93 @@ function createGhostMesh() {
     return ghostGroup;
 }
 
+// ===== 背景の塔（画像）を生成する関数 =====
+function createBackgroundTower() {
+    const bgGroup = new THREE.Group();
+    // グリッドの中心に配置
+    bgGroup.position.set(GRID_SIZE / 2, 0, GRID_SIZE / 2);
+    scene.add(bgGroup);
+
+    const loader = new THREE.TextureLoader();
+    
+    // 宇宙の画像を読み込む
+    const texSpace = loader.load('宇宙.jpg');
+    texSpace.wrapS = THREE.ClampToEdgeWrapping;
+    texSpace.wrapT = THREE.ClampToEdgeWrapping;
+
+    // 高さごとの設定（下から順に）
+    const segmentsData = [
+        { img: '地面.jpg',       type: 'all' },    // 0~30m
+        { img: '大気圏.jpg',     type: 'single' }, // 30~60m
+        { img: '月.jpg',         type: 'single' }, // 60~90m
+        { img: '金星.jpg',       type: 'single' }, // 90~120m
+        { img: '水星.jpg',       type: 'single' }, // 120~150m
+        { img: '太陽.jpg',       type: 'single' }, // 150~180m
+        { img: '宇宙.jpg',       type: 'all' },    // 180~210m
+        { img: 'ゴール惑星.jpg', type: 'all' }     // 210~240m
+    ];
+
+    const w = 40; // 面の幅
+    const h = 30; // 1つの画像につき縦30マス分の高さ
+    const dist = 20; // 中心から壁までの距離
+
+    // 底面のフタ（足元を見ても黒くならないように）
+    const groundCap = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, w), 
+        new THREE.MeshBasicMaterial({ map: loader.load('地面.jpg'), side: THREE.DoubleSide })
+    );
+    groundCap.rotation.x = -Math.PI / 2;
+    groundCap.position.y = -0.5;
+    bgGroup.add(groundCap);
+
+    // 各高さのセグメントを構築
+    segmentsData.forEach((seg, index) => {
+        const texMain = loader.load(seg.img);
+        texMain.wrapS = THREE.ClampToEdgeWrapping;
+        texMain.wrapT = THREE.ClampToEdgeWrapping;
+
+        // 4面を作成
+        for (let i = 0; i < 4; i++) {
+            // i=0 が初期カメラの真正面（奥側）。typeが'all'なら全面、'single'なら真正面だけメイン画像
+            const isPlanet = (seg.type === 'all') || (i === 0);
+            const tex = isPlanet ? texMain : texSpace;
+            
+            // 光の影響を受けないMeshBasicMaterialを使用
+            const mat = new THREE.MeshBasicMaterial({ 
+                map: tex, 
+                side: THREE.DoubleSide
+            });
+            
+            const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+            // 縦位置を計算 (0段目はY=15が中心)
+            const y = index * h + (h / 2); 
+            
+            if (i === 0) { plane.position.set(0, y, -dist); plane.rotation.y = 0; }
+            if (i === 1) { plane.position.set(dist, y, 0); plane.rotation.y = -Math.PI / 2; }
+            if (i === 2) { plane.position.set(0, y, dist); plane.rotation.y = Math.PI; }
+            if (i === 3) { plane.position.set(-dist, y, 0); plane.rotation.y = Math.PI / 2; }
+            
+            bgGroup.add(plane);
+        }
+    });
+
+    // 天井のフタ（ゴール惑星）
+    const topCap = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, w), 
+        new THREE.MeshBasicMaterial({ map: loader.load('ゴール惑星.jpg'), side: THREE.DoubleSide })
+    );
+    topCap.rotation.x = Math.PI / 2;
+    topCap.position.y = segmentsData.length * h; 
+    bgGroup.add(topCap);
+}
+
+
 function init() {
     const container = document.getElementById('game-container');
     scene = new THREE.Scene();
-    // 背景を白に
-    scene.background = new THREE.Color(0xffffff);
-    scene.fog = new THREE.Fog(0xffffff, 20, 60);
+    
+    // 背景の霧と色を消し、純粋な黒（宇宙の隙間用）にする
+    scene.background = new THREE.Color(0x000000);
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(DEFAULT_CAM.x, DEFAULT_CAM.y, DEFAULT_CAM.z);
@@ -160,21 +235,25 @@ function init() {
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // 白い地面プレート（グリッド下）
-    const groundGeo = new THREE.BoxGeometry(GRID_SIZE + 0.5, 0.15, GRID_SIZE + 0.5);
-    const groundMat = new THREE.MeshLambertMaterial({ color: 0xf8f8f8 });
+    // 地面（イラスト風のアウトライン付き台座）
+    const groundGeo = new THREE.BoxGeometry(GRID_SIZE, 0.4, GRID_SIZE);
+    const groundMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.position.set(GRID_SIZE / 2 - 0.5, -0.1, GRID_SIZE / 2 - 0.5);
+    ground.position.set(GRID_SIZE / 2 - 0.5, -0.2, GRID_SIZE / 2 - 0.5);
     scene.add(ground);
 
-    // グリッド（黒細線）
-    const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x333333, 0xaaaaaa);
-    gridHelper.position.set(GRID_SIZE / 2 - 0.5, 0, GRID_SIZE / 2 - 0.5);
+    const outlineGroundMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide });
+    const outlineGround = new THREE.Mesh(groundGeo, outlineGroundMat);
+    outlineGround.scale.set(1.02, 1.05, 1.02);
+    ground.add(outlineGround);
+
+    // 真っ黒なグリッド線
+    const gridHelper = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x111111, 0x111111);
+    gridHelper.position.set(GRID_SIZE / 2 - 0.5, 0.01, GRID_SIZE / 2 - 0.5);
     scene.add(gridHelper);
 
     dropMarkerGroup = new THREE.Group();
     scene.add(dropMarkerGroup);
-
 
     translationGroup = new THREE.Group();
     rotationGroup = new THREE.Group();
@@ -187,6 +266,10 @@ function init() {
     scene.add(landedBlocksGroup);
 
     initCharacter();
+    
+    // 背景の塔を生成
+    createBackgroundTower();
+    
     setupUI();
     startGame();
 
@@ -214,17 +297,14 @@ function resetCamera() {
 
 function initCharacter() {
     characterGroup = new THREE.Group();
-
     const ghost = createGhostMesh();
     characterGroup.add(ghost);
-
     characterGroup.position.set(charGridPos.x, 0, charGridPos.z);
     scene.add(characterGroup);
 
     armGroup = new THREE.Group();
     scene.add(armGroup);
 }
-
 
 function startGame() {
     isGameOver = false;
@@ -244,11 +324,9 @@ function spawnBlock() {
     rotationGroup.rotation.set(0, 0, 0);
 
     const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-    // ビビッドな原色（青・赤・緑・黄・橙・紫）
-    const BLOCK_COLORS = [0x2196F3, 0xF44336, 0x4CAF50, 0xFFEB3B, 0xFF9800, 0xAB47BC, 0x00BCD4];
+    const BLOCK_COLORS = [0x4285F4, 0xEA4335, 0x34A853, 0xFBBC05];
     const color = BLOCK_COLORS[Math.floor(Math.random() * BLOCK_COLORS.length)];
     const material = new THREE.MeshLambertMaterial({ color: color });
-    // ブロックのアウトライン（黒）
     const outlineMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide });
 
     const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -265,8 +343,7 @@ function spawnBlock() {
     });
 
     const front = getDropFront();
-    // 常にキャラの12マス上から落下
-    const spawnY = charHeight + 12;
+    const spawnY = charHeight + 7;
     translationGroup.position.set(front.x, spawnY, front.z);
 }
 
@@ -392,7 +469,6 @@ function getHeightAt(x, z) {
     return max;
 }
 
-
 function triggerGameOver() {
     isGameOver = true;
     document.getElementById('game-over-screen').style.display = 'flex';
@@ -400,7 +476,6 @@ function triggerGameOver() {
 }
 
 function updateCharacter() {
-
     const angle = Math.atan2(charFacing.x, charFacing.z);
     characterGroup.rotation.y = angle;
 
@@ -410,12 +485,9 @@ function updateCharacter() {
     characterGroup.position.z += (charGridPos.z - characterGroup.position.z) * 0.2;
     characterGroup.position.y += (charHeight - characterGroup.position.y) * 0.2;
 
-    document.getElementById('score-display').innerText = `到達高度: ${charHeight}m`;
-
     updateArms();
 }
 
-// ===== 腕：にょろにょろとブロックに伸びる =====
 function updateArms() {
     if (!armGroup) return;
 
@@ -448,8 +520,8 @@ function updateArms() {
     const lHand = blockPos.clone().add(new THREE.Vector3(-perpX * 0.8, 0, -perpZ * 0.8));
     const rHand = blockPos.clone().add(new THREE.Vector3(perpX * 0.8, 0, perpZ * 0.8));
 
-    // 腕もツヤツヤに
-    const armMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.1 });
+    const armMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const outlineMat = new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide });
 
     function drawArm(start, end) {
         const dist = start.distanceTo(end);
@@ -466,21 +538,35 @@ function updateArms() {
 
         for (let i = 0; i < segments; i++) {
             const t = i / segments;
-            const radius = 0.12 * (1 - t * 0.5);
+            const radius = 0.08 * (1 - t * 0.2); 
             const segCurve = new THREE.LineCurve3(points[i], points[i + 1]);
             const geo = new THREE.TubeGeometry(segCurve, 1, radius, 7, false);
-            armGroup.add(new THREE.Mesh(geo, armMat));
+            
+            const armSeg = new THREE.Mesh(geo, armMat);
+            const outlineSeg = new THREE.Mesh(geo, outlineMat);
+            outlineSeg.scale.set(1.3, 1.3, 1.3);
+            armSeg.add(outlineSeg);
+            armGroup.add(armSeg);
         }
 
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), armMat);
+        const handGeo = new THREE.SphereGeometry(0.13, 10, 10);
+        const hand = new THREE.Mesh(handGeo, armMat);
         hand.position.copy(end);
+        const handOutline = new THREE.Mesh(handGeo, outlineMat);
+        handOutline.scale.set(1.15, 1.15, 1.15);
+        hand.add(handOutline);
         armGroup.add(hand);
 
         for (let f = 0; f < 3; f++) {
             const fAngle = (f / 3) * Math.PI * 1.2 - Math.PI * 0.3;
             const fDir = new THREE.Vector3(Math.sin(fAngle) * 0.12, 0.08, Math.cos(fAngle) * 0.12);
-            const finger = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), armMat);
+            const fingerGeo = new THREE.SphereGeometry(0.05, 6, 6);
+            const finger = new THREE.Mesh(fingerGeo, armMat);
             finger.position.copy(end).add(fDir);
+            
+            const fingerOutline = new THREE.Mesh(fingerGeo, outlineMat);
+            fingerOutline.scale.set(1.3, 1.3, 1.3);
+            finger.add(fingerOutline);
             armGroup.add(finger);
         }
     }
@@ -522,8 +608,8 @@ function animate(time) {
 
             const seen = new Set();
             const markerMat = new THREE.MeshBasicMaterial({
-                color: 0xff80ab,
-                transparent: true, opacity: 0.45,
+                color: 0xaaaaaa, 
+                transparent: true, opacity: 0.5,
                 depthWrite: false, side: THREE.DoubleSide
             });
             blockGroup.children.forEach((cube, i) => {
@@ -550,13 +636,6 @@ function animate(time) {
         }
 
         updateCharacter();
-
-        const skyColor = new THREE.Color(0xffffff);
-        const spaceColor = new THREE.Color(0x888888);
-        const progress = Math.min(charHeight / 60, 1.0);
-        const currentColor = skyColor.clone().lerp(spaceColor, progress);
-        scene.background = currentColor;
-        scene.fog.color = currentColor;
 
         const targetCamY = Math.max(0, charHeight);
         const diffY = (targetCamY - controls.target.y) * 0.05;
