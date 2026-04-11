@@ -44,12 +44,16 @@ const SHAPES = [
 // ===== ゴースト生成（絵に近い形） =====
 function createGhostMesh() {
     const ghostGroup = new THREE.Group();
-    const ghostMat = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+    const ghostMat = new THREE.MeshStandardMaterial({ 
+        color: 0xf0f0f0, 
+        roughness: 0.1,  // 低くするほどツヤツヤ
+        metalness: 0.1   // ほんのり光沢
+    });
     const darkMat  = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const hlMat    = new THREE.MeshLambertMaterial({ color: 0xffffff });
 
     // --- 胴体：縦長・下広がり ---
-    const bodyGeo = new THREE.SphereGeometry(0.5, 32, 32);
+    const bodyGeo = new THREE.SphereGeometry(0.5, 64, 64);
     const bPos = bodyGeo.attributes.position;
     for (let i = 0; i < bPos.count; i++) {
         const x = bPos.getX(i);
@@ -109,7 +113,7 @@ function createGhostMesh() {
     for (let i = 0; i < jagCount; i++) {
         const angle = (i / jagCount) * Math.PI * 2;
         const r = 0.42;
-        const jagGeo = new THREE.SphereGeometry(0.1, 8, 8);
+        const jagGeo = new THREE.SphereGeometry(0.1, 16, 16);
         const jag = new THREE.Mesh(jagGeo, ghostMat);
         jag.position.set(Math.sin(angle) * r, 0.28, Math.cos(angle) * r);
         jag.scale.set(1, 0.7, 1);
@@ -473,7 +477,11 @@ function updateArms() {
     const lHand = blockPos.clone().add(new THREE.Vector3(-perpX * 0.8, 0, -perpZ * 0.8));
     const rHand = blockPos.clone().add(new THREE.Vector3(perpX * 0.8, 0, perpZ * 0.8));
 
-    const armMat = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
+    const armMat = new THREE.MeshStandardMaterial({ 
+        color: 0xf0f0f0,
+        roughness: 0.1,
+        metalness: 0.1
+    });
 
     function drawArm(start, end) {
         const dist = start.distanceTo(end);
