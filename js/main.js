@@ -15,8 +15,6 @@ let charGridPos = { x: 4, z: 4 };
 let charHeight = 0;
 let charFacing = { x: 0, z: -1 };
 
-let hp = 5;
-let prevCharHeight = 0;
 
 let activeDir = null;
 let moveTimer = 0;
@@ -220,13 +218,6 @@ function initCharacter() {
     const ghost = createGhostMesh();
     characterGroup.add(ghost);
 
-    const arrowGeo = new THREE.ConeGeometry(0.1, 0.3, 4);
-    const arrowMat = new THREE.MeshLambertMaterial({ color: 0xff80ab });
-    characterArrow = new THREE.Mesh(arrowGeo, arrowMat);
-    characterArrow.position.set(0, 0.06, -0.52);
-    characterArrow.rotation.x = Math.PI / 2;
-    characterGroup.add(characterArrow);
-
     characterGroup.position.set(charGridPos.x, 0, charGridPos.z);
     scene.add(characterGroup);
 
@@ -234,39 +225,17 @@ function initCharacter() {
     scene.add(armGroup);
 }
 
-function updateHPDisplay() {
-    const hpDiv = document.getElementById('hp-display');
-    if (!hpDiv) return;
-    hpDiv.innerHTML = '';
-    for (let i = 0; i < 5; i++) {
-        const heart = document.createElement('span');
-        if (i < hp) {
-            heart.textContent = '\u2665';
-            heart.style.color = '#ff80ab';
-            heart.style.textShadow = '0 0 4px #fff, 0 0 10px #ff80ab';
-        } else {
-            heart.textContent = '\u2661';
-            heart.style.color = 'rgba(255,255,255,0.8)';
-            heart.style.textShadow = 'none';
-        }
-        heart.style.fontSize = '32px';
-        hpDiv.appendChild(heart);
-    }
-}
 
 function startGame() {
     isGameOver = false;
-    hp = 5;
     charGridPos = { x: 4, z: 4 };
     charHeight = 0;
-    prevCharHeight = 0;
     charFacing = { x: 0, z: -1 };
 
     characterGroup.position.set(charGridPos.x, 0, charGridPos.z);
 
     while (landedBlocksGroup.children.length > 0) landedBlocksGroup.remove(landedBlocksGroup.children[0]);
     document.getElementById('game-over-screen').style.display = 'none';
-    updateHPDisplay();
     spawnBlock();
 }
 
@@ -296,9 +265,8 @@ function spawnBlock() {
     });
 
     const front = getDropFront();
-    // 落下先の現在の積み上げ高さを取得し、キャラ位置と比較して高い方の+4から落とす
-    const landHeight = getHeightAt(front.x, front.z);
-    const spawnY = Math.max(charHeight, landHeight) + 4;
+    // 常にキャラの12マス上から落下
+    const spawnY = charHeight + 12;
     translationGroup.position.set(front.x, spawnY, front.z);
 }
 
@@ -411,7 +379,6 @@ function lockBlock() {
         landedBlocksGroup.add(newCube);
     });
 
-    checkFallDamage();
     spawnBlock();
 }
 
@@ -425,25 +392,6 @@ function getHeightAt(x, z) {
     return max;
 }
 
-function checkFallDamage() {
-    const newHeight = getHeightAt(charGridPos.x, charGridPos.z);
-    const fall = prevCharHeight - newHeight;
-    if (fall >= 4) {
-        const dmg = fall - 3;
-        hp = Math.max(0, hp - dmg);
-        updateHPDisplay();
-        showDamageEffect();
-        if (hp <= 0) triggerGameOver();
-    }
-    prevCharHeight = newHeight;
-}
-
-function showDamageEffect() {
-    const el = document.getElementById('damage-flash');
-    if (!el) return;
-    el.style.opacity = '0.5';
-    setTimeout(() => { el.style.opacity = '0'; }, 300);
-}
 
 function triggerGameOver() {
     isGameOver = true;
