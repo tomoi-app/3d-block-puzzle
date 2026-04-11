@@ -46,6 +46,64 @@ const SHAPES = [
     [{ x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, { x: 0, y: 2, z: 0 }, { x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: -1 }], // 十字縦
 ];
 
+// ===== Three.jsでゴーストの胴体を作る関数 =====
+function createGhostMesh() {
+    const ghostGroup = new THREE.Group();
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+
+    // --- 胴体（球を変形） ---
+    const bodyGeo = new THREE.SphereGeometry(0.55, 32, 32);
+    const pos = bodyGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+        const y = pos.getY(i);
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+
+        if (y >= 0) {
+            // 上半分：少し縦に伸ばす
+            pos.setY(i, y * 1.3);
+        } else {
+            // 下半分：横に広げてスカート状に
+            const t = -y / 0.55; // 0〜1（下にいくほど1）
+            const flare = 1 + t * 0.6;
+            pos.setX(i, x * flare);
+            pos.setZ(i, z * flare);
+            pos.setY(i, y * 0.7); // 縦は少し短く
+        }
+    }
+    bodyGeo.computeVertexNormals();
+    const body = new THREE.Mesh(bodyGeo, mat);
+    body.position.y = 0.6;
+    ghostGroup.add(body);
+
+    // --- 目（左） ---
+    const eyeMatDark = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    const eyeGeo = new THREE.SphereGeometry(0.09, 12, 12);
+
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMatDark);
+    leftEye.position.set(-0.17, 0.75, 0.45);
+    ghostGroup.add(leftEye);
+
+    // --- 目（右） ---
+    const rightEye = new THREE.Mesh(eyeGeo.clone(), eyeMatDark);
+    rightEye.position.set(0.17, 0.75, 0.45);
+    ghostGroup.add(rightEye);
+
+    // --- 口（困った表情：波形） ---
+    const mouthPoints = [];
+    for (let i = 0; i <= 8; i++) {
+        const t = (i / 8 - 0.5) * 0.35;
+        const wave = Math.sin(i / 8 * Math.PI * 2) * 0.04;
+        mouthPoints.push(new THREE.Vector3(t, 0.58 + wave, 0.47));
+    }
+    const mouthCurve = new THREE.CatmullRomCurve3(mouthPoints);
+    const mouthGeo = new THREE.TubeGeometry(mouthCurve, 12, 0.025, 6, false);
+    const mouth = new THREE.Mesh(mouthGeo, eyeMatDark);
+    ghostGroup.add(mouth);
+
+    return ghostGroup;
+}
+
 function init() {
     const container = document.getElementById('game-container');
     scene = new THREE.Scene();
@@ -124,33 +182,9 @@ function resetCamera() {
 function initCharacter() {
     characterGroup = new THREE.Group();
 
-    // ===== 3Dモデル（.glb）の読み込み =====
-    const loader = new THREE.GLTFLoader();
-
-    // ご自身で作ったモデルのパスに合わせてください
-    loader.load('./ghost.glb', function (gltf) {
-        const model = gltf.scene;
-
-        model.scale.set(1.0, 1.0, 1.0);
-        model.position.y = 0.5; // モデルの基準点に応じて調整
-
-        model.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
-
-        characterGroup.add(model);
-    }, undefined, function (error) {
-        console.error('3Dモデルの読み込みに失敗しました:', error);
-        // エラー時の仮モデル（赤い箱）
-        const fallbackGeo = new THREE.BoxGeometry(0.8, 1, 0.8);
-        const fallbackMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-        const fallbackMesh = new THREE.Mesh(fallbackGeo, fallbackMat);
-        fallbackMesh.position.y = 0.5;
-        characterGroup.add(fallbackMesh);
-    });
+    // Three.jsで作ったゴーストを追加（GLBファイル不要！）
+    const ghost = createGhostMesh();
+    characterGroup.add(ghost);
 
     const arrowGeo = new THREE.ConeGeometry(0.1, 0.3, 4);
     const arrowMat = new THREE.MeshLambertMaterial({ color: 0xff5500 });
