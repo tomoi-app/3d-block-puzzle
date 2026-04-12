@@ -937,7 +937,21 @@ settingsClose.addEventListener('click', closeSettings);
 settingsOverlay.addEventListener('click', closeSettings);
 
 // BGM音量スライダー
-bgmVolumeSlider.addEventListener('input', () => {
+function applyVolume() {
     const vol = bgmVolumeSlider.value / 100;
     bgm.volume = vol;
+}
+bgmVolumeSlider.addEventListener('input',  applyVolume);
+bgmVolumeSlider.addEventListener('change', applyVolume);
+
+// BGM ON/OFF切り替え
+const bgmMuteCheckbox = document.getElementById('bgm-mute');
+bgmMuteCheckbox.addEventListener('change', () => {
+    bgm.muted = !bgmMuteCheckbox.checked;
+});
+
+// リセットボタン
+document.getElementById('settings-reset').addEventListener('click', () => {
+    closeSettings();
+    startGame();
 });

@@ -40,8 +40,18 @@
         <button id="settings-close">✕</button>
       </div>
       <div class="settings-row">
+        <label for="bgm-mute">BGMを鳴らす</label>
+        <label class="switch">
+          <input type="checkbox" id="bgm-mute" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="settings-row">
         <label for="bgm-volume">BGM音量</label>
         <input id="bgm-volume" type="range" min="0" max="100" value="50">
+      </div>
+      <div class="settings-row">
+        <button id="settings-reset">リセットする</button>
       </div>
     </div>
     <!-- パネル外タップで閉じる -->

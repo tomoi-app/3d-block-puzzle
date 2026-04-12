@@ -26,7 +26,7 @@ body { overflow: hidden; font-family: 'M PLUS Rounded 1c', sans-serif; }
 }
 #splash-title {
     position: absolute;
-    bottom: 12px;
+    top: 12px;
     left: 50%;
     transform: translateX(-50%);
     font-size: clamp(28px, 8vw, 56px);
@@ -157,9 +157,80 @@ body { overflow: hidden; font-family: 'M PLUS Rounded 1c', sans-serif; }
     white-space: nowrap;
 }
 #bgm-volume {
-    flex: 1; height: 6px;
+    flex: 1; height: 28px; /* タッチしやすい高さ */
     accent-color: #4285F4;
     cursor: pointer;
+    user-select: auto; /* グローバルのuser-select:noneを上書き */
+    touch-action: manipulation;
+}
+
+/* トグルスイッチのスタイル */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border: 2px solid #111;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border: 2px solid #111;
+}
+input:checked + .slider {
+  background-color: #4285F4;
+}
+input:focus + .slider {
+  box-shadow: 0 0 1px #4285F4;
+}
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+.slider.round {
+  border-radius: 28px;
+}
+.slider.round:before {
+  border-radius: 50%;
+}
+
+#settings-reset {
+    width: 100%;
+    padding: 12px;
+    background: #EA4335;
+    color: #fff;
+    border: 3px solid #111;
+    border-radius: 10px;
+    box-shadow: 0 4px 0 #111;
+    font-size: 15px; font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+}
+#settings-reset:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #111;
 }
 
 /* ▼▼ 左上の高度表記を非表示に ▼▼ */
