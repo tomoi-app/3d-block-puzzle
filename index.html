@@ -13,16 +13,39 @@
   <body>
     <!-- スプラッシュスクリーン -->
     <div id="splash-screen">
-      <img id="splash-img" src="サムネイル.png" alt="ゴーストブロックパズル">
+      <div id="splash-wrapper">
+        <img id="splash-img" src="サムネイル.png" alt="ゴーストブロックパズル">
+        <p id="splash-title">-step-</p>
+      </div>
       <p id="tap-hint">タップしてスタート</p>
     </div>
 
     <div id="game-container"></div>
 
+    <!-- BGM -->
+    <audio id="bgm" loop preload="auto"></audio>
+
     <!-- ダメージフラッシュ -->
     <div id="damage-flash"></div>
 
     <div id="score-display">高度: 0m</div>
+
+    <!-- 設定ボタン -->
+    <button id="settings-btn" aria-label="設定">⚙</button>
+
+    <!-- 設定パネル -->
+    <div id="settings-panel">
+      <div id="settings-header">
+        <span>設定</span>
+        <button id="settings-close">✕</button>
+      </div>
+      <div class="settings-row">
+        <label for="bgm-volume">BGM音量</label>
+        <input id="bgm-volume" type="range" min="0" max="100" value="50">
+      </div>
+    </div>
+    <!-- パネル外タップで閉じる -->
+    <div id="settings-overlay"></div>
 
 
     <div id="ui-layer">
@@ -75,7 +98,13 @@
 
     <!-- エンディング動画 -->
     <div id="ending-screen">
-      <video id="ending-video" src="エンディング.mp4" playsinline webkit-playsinline></video>
+      <video id="ending-video" src="エンディング.mp4" playsinline webkit-playsinline muted></video>
+    </div>
+
+    <!-- サンクス画面（エンディング後） -->
+    <div id="thanks-screen">
+      <p id="thanks-text">-step-をお楽しみいただき<br>ありがとうございました。</p>
+      <p id="thanks-hint">タップして最初に戻る</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

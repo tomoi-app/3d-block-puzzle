@@ -18,8 +18,42 @@ let isGameOver = false;
 let charGridPos = { x: 4, z: 4 };
 let charHeight = 0;
 let charFacing = { x: 0, z: -1 };
-let goalStepCount = 0; // ゴール到達後の歩数カウンター
-let isEndingPlaying = false; // エンディング再生中フラグ
+let goalStepCount = 0;
+let isEndingPlaying = false;
+let currentBGMSrc = ''; // 現在再生中のBGMファイル名
+
+// ===== ゾーン別BGM設定 =====
+const BGM_ZONES = [
+    { minY:   0, src: '始まり.mp3'     }, // 地面
+    { minY:  30, src: '大気圈.mp3'   }, // 大気圈
+    { minY:  60, src: '月.mp3'       }, // 月
+    { minY:  90, src: '金星.mp3'     }, // 金星
+    { minY: 120, src: '水星.mp3'     }, // 水星
+    { minY: 150, src: '太陽.mp3'     }, // 太陽
+    { minY: 180, src: '宇宙.mp3'     }, // 宇宙
+    { minY: 210, src: 'ゴール惑星.mp3' }, // ゴール惑星
+];
+
+function getBGMSrc(h) {
+    let src = BGM_ZONES[0].src;
+    for (const z of BGM_ZONES) {
+        if (h >= z.minY) src = z.src;
+        else break;
+    }
+    return src;
+}
+
+function updateBGM() {
+    const bgmEl = document.getElementById('bgm');
+    if (!bgmEl || bgmEl.paused) return; // タイトルタップ前はスキップ
+    const newSrc = getBGMSrc(charHeight);
+    if (currentBGMSrc !== newSrc) {
+        currentBGMSrc = newSrc;
+        bgmEl.src = newSrc;
+        bgmEl.loop = true;
+        bgmEl.play().catch(() => {});
+    }
+}
 
 // ===== デバッグ：ゴール手前2マスからスタート =====
 // falseに変えると通常スタートに戻る
@@ -455,17 +489,34 @@ function triggerEnding() {
     isEndingPlaying = true;
     const screen = document.getElementById('ending-screen');
     const video  = document.getElementById('ending-video');
+    const bgmEl  = document.getElementById('bgm');
+
+    // ゴール惑星.mp3 を確実に再生（途中で止まっていても再スタート）
+    const GOAL_BGM = 'ゴール惑星.mp3';
+    if (bgmEl) {
+        if (currentBGMSrc !== GOAL_BGM) {
+            currentBGMSrc = GOAL_BGM;
+            bgmEl.src = GOAL_BGM;
+            bgmEl.loop = true;
+        }
+        bgmEl.play().catch(() => {});
+    }
+
+    // 動画の音声はミュートにしてBGMのみ流す
+    video.muted = true;
     screen.classList.add('active');
     video.currentTime = 0;
-    video.play().catch(() => {}); // 自動再生失敗してもクラッシュしない
-    video.onended = () => {
+    video.play().catch(() => {});
+
+    const showThanks = () => {
         screen.classList.remove('active');
-    };
-    // 画面タップでも閉じる
-    screen.addEventListener('click', () => {
         video.pause();
-        screen.classList.remove('active');
-    }, { once: true });
+        // サンクス画面でもBGMは止めない（loopしてる）
+        document.getElementById('thanks-screen').classList.add('active');
+    };
+
+    video.onended = showThanks;
+    screen.addEventListener('click', showThanks, { once: true });
 }
 
 function moveForward() {
@@ -786,6 +837,7 @@ function animate(time) {
         goalWalls[3].visible = !(cx > hi); // 右壁
     }
 
+    updateBGM();
     controls.update();
     renderer.render(scene, camera);
 }
@@ -841,11 +893,51 @@ function setupUI() {
 
 init();
 
-// スプラッシュスクリーン：タップでフェードアウト
+// サンクス画面タップで最初の画面に戻る
+document.getElementById('thanks-screen').addEventListener('click', () => {
+    location.reload();
+});
+
+// スプラッシュスクリーン：タップでフェードアウト＋BGM開始
 const splash = document.getElementById('splash-screen');
+const bgm    = document.getElementById('bgm');
+bgm.volume   = 0.5; // 音量（0.0〜1.0）
+
 if (splash) {
     splash.addEventListener('pointerdown', () => {
         splash.classList.add('hidden');
         setTimeout(() => splash.remove(), 500);
+        // 現在の高さに合ったBGMをセットして再生
+        const startSrc = getBGMSrc(charHeight);
+        currentBGMSrc = startSrc;
+        bgm.src = startSrc;
+        bgm.loop = true;
+        bgm.play().catch(() => {});
     });
 }
+
+// ===== 設定パネルの開閉 =====
+const settingsBtn     = document.getElementById('settings-btn');
+const settingsPanel   = document.getElementById('settings-panel');
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsClose   = document.getElementById('settings-close');
+const bgmVolumeSlider = document.getElementById('bgm-volume');
+
+function openSettings() {
+    settingsPanel.classList.add('show');
+    settingsOverlay.classList.add('show');
+}
+function closeSettings() {
+    settingsPanel.classList.remove('show');
+    settingsOverlay.classList.remove('show');
+}
+
+settingsBtn.addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', closeSettings);
+
+// BGM音量スライダー
+bgmVolumeSlider.addEventListener('input', () => {
+    const vol = bgmVolumeSlider.value / 100;
+    bgm.volume = vol;
+});
