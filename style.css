@@ -103,10 +103,18 @@ body { overflow: hidden; font-family: 'M PLUS Rounded 1c', sans-serif; }
     border: 3px solid #111;
     border-radius: 12px;
     box-shadow: 0 4px 0 #111;
-    font-size: 24px; line-height: 1;
     cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
     transition: transform 0.1s, box-shadow 0.1s;
     -webkit-tap-highlight-color: transparent;
+}
+#settings-btn svg {
+    width: 28px; height: 28px;
+    color: #111;
+    transition: transform 0.4s ease;
+}
+#settings-btn:hover svg {
+    transform: rotate(45deg);
 }
 #settings-btn:active {
     transform: translateY(3px);
@@ -156,13 +164,7 @@ body { overflow: hidden; font-family: 'M PLUS Rounded 1c', sans-serif; }
     font-size: 15px; font-weight: bold; color: #111;
     white-space: nowrap;
 }
-#bgm-volume {
-    flex: 1; height: 28px; /* タッチしやすい高さ */
-    accent-color: #4285F4;
-    cursor: pointer;
-    user-select: auto; /* グローバルのuser-select:noneを上書き */
-    touch-action: manipulation;
-}
+
 
 /* トグルスイッチのスタイル */
 .switch {

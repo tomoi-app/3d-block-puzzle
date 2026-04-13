@@ -57,7 +57,7 @@ function updateBGM() {
 
 // ===== デバッグ：ゴール手前2マスからスタート =====
 // falseに変えると通常スタートに戻る
-const DEBUG_GOAL_START  = true;
+const DEBUG_GOAL_START  = false;
 const DEBUG_GOAL_HEIGHT = 208; // y=210（ゴール）の2マス手前
 
 const moveInterval = 150;
@@ -921,7 +921,7 @@ const settingsBtn     = document.getElementById('settings-btn');
 const settingsPanel   = document.getElementById('settings-panel');
 const settingsOverlay = document.getElementById('settings-overlay');
 const settingsClose   = document.getElementById('settings-close');
-const bgmVolumeSlider = document.getElementById('bgm-volume');
+
 
 function openSettings() {
     settingsPanel.classList.add('show');
@@ -936,13 +936,7 @@ settingsBtn.addEventListener('click', openSettings);
 settingsClose.addEventListener('click', closeSettings);
 settingsOverlay.addEventListener('click', closeSettings);
 
-// BGM音量スライダー
-function applyVolume() {
-    const vol = bgmVolumeSlider.value / 100;
-    bgm.volume = vol;
-}
-bgmVolumeSlider.addEventListener('input',  applyVolume);
-bgmVolumeSlider.addEventListener('change', applyVolume);
+
 
 // BGM ON/OFF切り替え
 const bgmMuteCheckbox = document.getElementById('bgm-mute');
