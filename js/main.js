@@ -460,18 +460,7 @@ function spawnBlock() {
 function getDropFront() {
     const fx = charGridPos.x + charFacing.x;
     const fz = charGridPos.z + charFacing.z;
-    const cx = Math.max(0, Math.min(GRID_SIZE - 1, fx));
-    const cz = Math.max(0, Math.min(GRID_SIZE - 1, fz));
-    if (cx === charGridPos.x && cz === charGridPos.z) {
-        const candidates = [
-            { x: charGridPos.x + 1, z: charGridPos.z },
-            { x: charGridPos.x - 1, z: charGridPos.z },
-            { x: charGridPos.x, z: charGridPos.z + 1 },
-            { x: charGridPos.x, z: charGridPos.z - 1 },
-        ].filter(p => p.x >= 0 && p.x < GRID_SIZE && p.z >= 0 && p.z < GRID_SIZE);
-        return candidates[0] ?? { x: charGridPos.x, z: charGridPos.z };
-    }
-    return { x: cx, z: cz };
+    return { x: fx, z: fz };
 }
 
 const GOAL_Y_CONST = 7 * 30; // 210
@@ -575,12 +564,6 @@ function checkCollision(targetX, targetY, targetZ) {
 
         // 地面 (y=0)
         if (py < 1) {
-            hasCollision = true;
-        }
-
-
-
-        if (px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
             hasCollision = true;
         }
 
@@ -895,7 +878,7 @@ document.getElementById('thanks-screen').addEventListener('click', () => {
 // スプラッシュスクリーン：タップでフェードアウト＋BGM開始
 const splash = document.getElementById('splash-screen');
 const bgm    = document.getElementById('bgm');
-bgm.volume   = 0.1; // 音量（0.0〜1.0）
+bgm.volume   = 0.03; // 音量（0.0〜1.0）
 
 if (splash) {
     splash.addEventListener('pointerdown', () => {
