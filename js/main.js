@@ -877,28 +877,10 @@ document.getElementById('thanks-screen').addEventListener('click', () => {
 
 // スプラッシュスクリーン：タップでフェードアウト＋BGM開始
 const splash = document.getElementById('splash-screen');
-const bgm    = document.getElementById('bgm');
-
-let audioCtx;
-let gainNode;
-
-function initAudio() {
-    if (audioCtx) return;
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AudioContext();
-    const track = audioCtx.createMediaElementSource(bgm);
-    gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.5; // iOS Safariなどでも確実に音量を適用
-    track.connect(gainNode).connect(audioCtx.destination);
-}
+const bgm    = document.getElementById('bgm');bgm.volume   = 0.5; // 音量（0.0〜1.0）
 
 if (splash) {
     splash.addEventListener('pointerdown', () => {
-        initAudio();
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        
         splash.classList.add('hidden');
         setTimeout(() => splash.remove(), 500);
         // 現在の高さに合ったBGMをセットして再生
