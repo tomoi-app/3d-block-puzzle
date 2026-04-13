@@ -888,7 +888,7 @@ function initAudio() {
     audioCtx = new AudioContext();
     const track = audioCtx.createMediaElementSource(bgm);
     gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.1; // iOS Safariなどでも確実に音量を適用
+    gainNode.gain.value = 0.5; // iOS Safariなどでも確実に音量を適用
     track.connect(gainNode).connect(audioCtx.destination);
 }
 
