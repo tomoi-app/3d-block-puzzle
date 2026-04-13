@@ -25,7 +25,7 @@ let currentBGMSrc = ''; // 現在再生中のBGMファイル名
 // ===== ゾーン別BGM設定 =====
 const BGM_ZONES = [
     { minY:   0, src: '始まり.mp3'     }, // 地面
-    { minY:  30, src: '大気圈.mp3'   }, // 大気圈
+    { minY:  30, src: '大気圏.mp3'   }, // 大気圏
     { minY:  60, src: '月.mp3'       }, // 月
     { minY:  90, src: '金星.mp3'     }, // 金星
     { minY: 120, src: '水星.mp3'     }, // 水星
