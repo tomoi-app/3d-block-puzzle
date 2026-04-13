@@ -1,5 +1,5 @@
 // 🚨 ルール2: デプロイ時は必ずこのバージョン番号を変更すること（例: v1.0.0 → v1.0.1）
-const CACHE_VERSION = 'step-cache-v1.0.0';
+const CACHE_VERSION = 'step-cache-v1.0.1';
 
 // キャッシュするアセットのリスト
 const ASSETS_TO_CACHE = [
