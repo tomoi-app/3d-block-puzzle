@@ -290,15 +290,7 @@ function createGoalLand() {
         goalWalls.push(plane); // 参照を保存
     });
 
-    // ===== y=208 の床（8×8グリッド内） =====
-    const FLOOR_Y = 208;
-    const floorGeo = new THREE.BoxGeometry(G, 1, G);
-    const floorMesh = new THREE.Mesh(floorGeo, sandMat);
-    floorMesh.position.set(3.5, FLOOR_Y - 0.5, 3.5); // 頂面が y=208 になる中心
-    const floorOutline = new THREE.Mesh(floorGeo, outlineMat);
-    floorOutline.scale.set(1.01, 1.3, 1.01);
-    floorMesh.add(floorOutline);
-    scene.add(floorMesh);
+
 }
 
 
@@ -586,12 +578,7 @@ function checkCollision(targetX, targetY, targetZ) {
             hasCollision = true;
         }
 
-        // ゴール地点の床 (y=208)
-        // キャラがある程度高い (180m以上) 位置にいるときのみ、208mの床を有効化する
-        const PERM_FLOOR = 208;
-        if (py <= PERM_FLOOR && charHeight >= 180 && px >= 0 && px < GRID_SIZE && pz >= 0 && pz < GRID_SIZE) {
-            hasCollision = true;
-        }
+
 
         if (px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
             hasCollision = true;
@@ -908,7 +895,7 @@ document.getElementById('thanks-screen').addEventListener('click', () => {
 // スプラッシュスクリーン：タップでフェードアウト＋BGM開始
 const splash = document.getElementById('splash-screen');
 const bgm    = document.getElementById('bgm');
-bgm.volume   = 0.2; // 音量（0.0〜1.0）
+bgm.volume   = 0.1; // 音量（0.0〜1.0）
 
 if (splash) {
     splash.addEventListener('pointerdown', () => {
