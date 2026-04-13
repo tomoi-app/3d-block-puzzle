@@ -878,7 +878,7 @@ document.getElementById('thanks-screen').addEventListener('click', () => {
 // スプラッシュスクリーン：タップでフェードアウト＋BGM開始
 const splash = document.getElementById('splash-screen');
 const bgm    = document.getElementById('bgm');
-bgm.volume   = 0.03; // 音量（0.0〜1.0）
+bgm.volume   = 0.005; // 音量（0.0〜1.0）
 
 if (splash) {
     splash.addEventListener('pointerdown', () => {
