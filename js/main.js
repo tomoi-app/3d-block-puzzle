@@ -581,12 +581,19 @@ function checkCollision(targetX, targetY, targetZ) {
         const py = Math.round(worldPos.y);
         const pz = Math.round(worldPos.z);
 
-        if (worldPos.y < 0.5 || px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
+        // 地面 (y=0)
+        if (py < 1) {
             hasCollision = true;
         }
-        // y=208の床との衝突（グリッド内のみ）
+
+        // ゴール地点の床 (y=208)
+        // キャラがある程度高い (180m以上) 位置にいるときのみ、208mの床を有効化する
         const PERM_FLOOR = 208;
-        if (py <= PERM_FLOOR && px >= 0 && px < GRID_SIZE && pz >= 0 && pz < GRID_SIZE) {
+        if (py <= PERM_FLOOR && charHeight >= 180 && px >= 0 && px < GRID_SIZE && pz >= 0 && pz < GRID_SIZE) {
+            hasCollision = true;
+        }
+
+        if (px < 0 || px >= GRID_SIZE || pz < 0 || pz >= GRID_SIZE) {
             hasCollision = true;
         }
 
@@ -901,7 +908,7 @@ document.getElementById('thanks-screen').addEventListener('click', () => {
 // スプラッシュスクリーン：タップでフェードアウト＋BGM開始
 const splash = document.getElementById('splash-screen');
 const bgm    = document.getElementById('bgm');
-bgm.volume   = 0.5; // 音量（0.0〜1.0）
+bgm.volume   = 0.2; // 音量（0.0〜1.0）
 
 if (splash) {
     splash.addEventListener('pointerdown', () => {
